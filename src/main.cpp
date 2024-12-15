@@ -46,6 +46,7 @@ private:
   vec2 position;
 };
 
+struct IsLocked : public BaseComponent {};
 struct IsFalling : public BaseComponent {};
 struct PieceType : public BaseComponent {
   PieceType(int t) : type(t), angle(0) {
@@ -147,6 +148,29 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
   return overlaps_with_piece || overlaps_with_ground;
 }
 
+struct ForceDrop : System<Transform, IsFalling, PieceType> {
+  ForceDrop() {}
+  virtual ~ForceDrop() {}
+
+  bool is_space = false;
+
+  void once(float) override {
+    is_space = raylib::IsKeyPressed(raylib::KEY_SPACE);
+  }
+
+  virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
+                             PieceType &pt, float) override {
+    if (!is_space)
+      return;
+    vec2 p = transform.pos();
+    vec2 offset = vec2{0, sz};
+    while (!will_collide(entity.id, transform.pos() + offset, pt.shape)) {
+      p += offset;
+      transform.update(p);
+    }
+  }
+};
+
 struct Move : System<Transform, IsFalling, PieceType> {
   float timer;
   float timerReset;
@@ -172,12 +196,17 @@ struct Move : System<Transform, IsFalling, PieceType> {
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              PieceType &pt, float) override {
+    bool is_space_pressed = raylib::IsKeyDown(raylib::KEY_SPACE);
+
     vec2 p = transform.pos();
     if (is_left_pressed)
       p -= vec2{sz, 0};
     if (is_right_pressed)
       p += vec2{sz, 0};
     if (is_down_pressed)
+      p += vec2{0, sz};
+
+    if (is_space_pressed)
       p += vec2{0, sz};
 
     if (will_collide(entity.id, p, pt.shape)) {
@@ -285,7 +314,7 @@ struct RenderGrid : System<> {
 
 struct RenderPiece : System<Transform, PieceType> {
   virtual ~RenderPiece() {}
-  virtual void for_each_with(const Entity &, const Transform &transform,
+  virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const PieceType &pieceType, float) const override {
 
     for (int i = 0; i < 4; i++) {
@@ -294,7 +323,9 @@ struct RenderPiece : System<Transform, PieceType> {
           continue;
         raylib::DrawRectangleV(
             {transform.pos().x + (i * sz), transform.pos().y + (j * sz)},
-            {sz * szm, sz * szm}, color::piece_color(pieceType.type));
+            {sz * szm, sz * szm},
+            entity.has<IsLocked>() ? color::GRAY_
+                                   : color::piece_color(pieceType.type));
       }
     }
   }
@@ -328,11 +359,13 @@ int main(void) {
   for (int i = 0; i < map_w; i += 4) {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
+    entity.addComponent<IsLocked>();
     entity.addComponent<PieceType>(0);
   }
 
   SystemManager systems;
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
+  systems.register_update_system(std::make_unique<ForceDrop>());
   systems.register_update_system(std::make_unique<Rotate>());
   systems.register_update_system(std::make_unique<Move>());
   systems.register_update_system(std::make_unique<Fall>());
