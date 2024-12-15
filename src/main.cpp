@@ -61,8 +61,11 @@ private:
   vec2 position;
 };
 
+struct HasCollision : public BaseComponent {};
+struct IsGround : public BaseComponent {};
 struct IsLocked : public BaseComponent {};
 struct IsFalling : public BaseComponent {};
+
 struct PieceType : public BaseComponent {
   PieceType(int t) : type(t), angle(0) {
     shape = type_to_rotated_array(type, angle);
@@ -145,9 +148,24 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
 
   return EQ()
       .whereNotID(id)
+      .whereHasComponent<HasCollision>()
       .whereHasComponent<Transform>()
       .whereOverlaps(pos, shape)
       .has_values();
+}
+
+void lock_entity(Entity &entity, const vec2 &pos,
+                 const std::array<int, 16> &sh) {
+  entity.removeComponent<IsFalling>();
+  entity.cleanup = true;
+
+  const auto &pips = get_pips(pos, sh);
+  for (auto &pip : pips) {
+    auto &new_entity = EntityHelper::createEntity();
+    new_entity.addComponent<Transform>(pip);
+    new_entity.addComponent<IsLocked>();
+    new_entity.addComponent<HasCollision>();
+  }
 }
 
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
@@ -170,7 +188,7 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       p += offset;
     }
     transform.update(p);
-    entity.removeComponent<IsFalling>();
+    lock_entity(entity, p, pt.shape);
   }
 };
 
@@ -293,7 +311,7 @@ struct Fall : System<Transform, IsFalling, PieceType> {
                              PieceType &pt, float) override {
     auto p = transform.pos() + vec2{0, sz};
     if (will_collide(entity.id, p, pt.shape)) {
-      entity.removeComponent<IsFalling>();
+      lock_entity(entity, transform.pos(), pt.shape);
       return;
     }
     //
@@ -315,10 +333,24 @@ struct RenderGrid : System<> {
   }
 };
 
+struct RenderLocked : System<Transform, IsLocked> {
+  virtual ~RenderLocked() {}
+  virtual void for_each_with(const Entity &, const Transform &transform,
+                             const IsLocked &, float) const override {
+
+    raylib::Color col = color::BLACK;
+    raylib::DrawRectangleV(transform.pos(), {sz * szm, sz * szm}, col);
+  }
+};
+
 struct RenderPiece : System<Transform, PieceType> {
   virtual ~RenderPiece() {}
   virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const PieceType &pieceType, float) const override {
+
+    raylib::Color col = entity.has<IsGround>()
+                            ? color::BLACK_
+                            : color::piece_color(pieceType.type);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
@@ -327,8 +359,8 @@ struct RenderPiece : System<Transform, PieceType> {
         raylib::DrawRectangleV(
             {transform.pos().x + (i * sz), transform.pos().y + (j * sz)},
             {sz * szm, sz * szm},
-            entity.has<IsLocked>() ? color::BLACK
-                                   : color::piece_color(pieceType.type));
+
+            col);
       }
     }
   }
@@ -372,6 +404,7 @@ struct SpawnPieceIfNoneFalling : System<> {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<Transform>(vec2{20, 20});
     entity.addComponent<IsFalling>();
+    entity.addComponent<HasCollision>();
     entity.addComponent<PieceType>(rand() % 6);
 
     std::cout << "spawned piece of type " << entity.get<PieceType>().type
@@ -389,7 +422,8 @@ int main(void) {
   for (int i = 0; i < map_w; i += 4) {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
-    entity.addComponent<IsLocked>();
+    entity.addComponent<IsGround>();
+    entity.addComponent<HasCollision>();
     entity.addComponent<PieceType>(0);
   }
 
@@ -403,11 +437,12 @@ int main(void) {
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
   systems.register_render_system(std::make_unique<RenderGhost>());
+  systems.register_render_system(std::make_unique<RenderLocked>());
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
     {
-      raylib::ClearBackground(raylib::BLACK);
+      raylib::ClearBackground(color::BLACK_);
       systems.run(raylib::GetFrameTime());
     }
     raylib::EndDrawing();
