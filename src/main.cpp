@@ -70,10 +70,17 @@ struct EQ : public EntityQuery<EQ> {
   }
 };
 
+bool will_collide(vec2 pos) { return EQ().whereInRange(pos, 2).has_values(); }
+
+//
+int map_h = 33;
+int map_w = 12;
+float TR = 0.05f;
+
 struct Move : System<Transform, IsFalling> {
   float timer;
   float timerReset;
-  Move() : timer(0.5f), timerReset(0.5f) {}
+  Move() : timer(TR), timerReset(TR) {}
 
   virtual ~Move() {}
 
@@ -86,9 +93,13 @@ struct Move : System<Transform, IsFalling> {
     return false;
   }
 
-  virtual void for_each_with(Entity &, Transform &transform, IsFalling &,
+  virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              float) override {
     auto p = transform.pos() + vec2{0, 20.f};
+    if (will_collide(p)) {
+      entity.removeComponent<IsFalling>();
+      return;
+    }
     //
     //
     transform.update(p);
@@ -101,12 +112,9 @@ struct RenderGrid : System<> {
     float sz = 20;
     vec2 full_size = {sz, sz};
     vec2 size = full_size * 0.8f;
-    int map_h = 33;
-    int map_w = 12;
     for (int i = 0; i < map_w; i++) {
       for (int j = 0; j < map_h; j++) {
-        raylib::DrawRectangleV({(i * sz) + 2, (j * sz) + 2}, size,
-                               raylib::RAYWHITE);
+        raylib::DrawRectangleV({(i * sz), (j * sz)}, size, raylib::RAYWHITE);
       }
     }
   }
@@ -116,7 +124,7 @@ struct RenderPiece : System<Transform, PieceType> {
   virtual ~RenderPiece() {}
   virtual void for_each_with(const Entity &, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-    raylib::DrawRectangleV(transform.pos(), {20, 20},
+    raylib::DrawRectangleV(transform.pos(), {20 * 0.8f, 20 * 0.8f},
                            color::piece_color(pieceType.type));
   }
 };
@@ -143,6 +151,12 @@ int main(void) {
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
   raylib::SetTargetFPS(60);
 
+  for (int i = 0; i < map_w; i++) {
+    auto &entity = EntityHelper::createEntity();
+    entity.addComponent<Transform>(vec2{20.f * i, map_h * 20.f});
+    entity.addComponent<PieceType>(-1);
+  }
+
   SystemManager systems;
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
   systems.register_update_system(std::make_unique<Move>());
@@ -151,7 +165,6 @@ int main(void) {
   systems.register_render_system(std::make_unique<RenderPiece>());
 
   while (!raylib::WindowShouldClose()) {
-
     raylib::BeginDrawing();
     {
       raylib::ClearBackground(raylib::GRAY);

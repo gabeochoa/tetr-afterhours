@@ -32,6 +32,9 @@ inline Color piece_color(int type) {
     return BLUE_;
   if (type == 6)
     return ORANGE_;
+  if (type == -1)
+    return GRAY_;
+
   return WHITE_;
 }
 
