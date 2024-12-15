@@ -292,3 +292,9 @@ struct SpawnGround : System<> {
     return false;
   }
 };
+
+struct InputSystem : System<> {
+  std::vector<InputAction> inputs;
+
+  virtual void once(float) {}
+};

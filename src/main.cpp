@@ -52,6 +52,14 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape);
 void lock_entity(Entity &entity, const vec2 &pos,
                  const std::array<int, 16> &sh);
 
+enum InputAction {
+  None,
+  Left,
+  Right,
+  Rotate,
+  Drop,
+};
+
 // These are not real header files, im just
 // hijacking the include to paste the files here in this order
 //
@@ -72,6 +80,9 @@ int main(void) {
   raylib::SetTargetFPS(60);
 
   SystemManager systems;
+  //
+  systems.register_update_system(std::make_unique<InputSystem>());
+  //
   systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
   systems.register_update_system(std::make_unique<ForceDrop>());
