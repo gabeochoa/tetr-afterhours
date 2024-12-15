@@ -412,6 +412,36 @@ struct SpawnPieceIfNoneFalling : System<> {
   };
 };
 
+struct ClearLine : System<> {
+  virtual ~ClearLine() {}
+
+  virtual void once(float) {
+    auto line = type_to_rotated_array(0, 0);
+
+    for (int j = map_h - 2; j >= 0; j--) {
+
+      vec2 pos = vec2{0, (j)*sz};
+
+      RefEntities entities;
+      for (int i = 0; i < 3; i++) {
+        auto tmp = EQ().whereHasComponent<HasCollision>()
+                       .whereOverlaps(pos, line)
+                       .gen();
+        for (Entity &e : tmp)
+          entities.push_back(e);
+        pos.x += 4 * sz;
+      }
+
+      if (entities.size() != 12)
+        continue;
+
+      for (Entity &e : entities) {
+        e.cleanup = true;
+      }
+    }
+  };
+};
+
 int main(void) {
   const int screenWidth = 720;
   const int screenHeight = 720;
@@ -433,6 +463,7 @@ int main(void) {
   systems.register_update_system(std::make_unique<Rotate>());
   systems.register_update_system(std::make_unique<Move>());
   systems.register_update_system(std::make_unique<Fall>());
+  systems.register_update_system(std::make_unique<ClearLine>());
   //
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
