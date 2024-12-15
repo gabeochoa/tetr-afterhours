@@ -136,10 +136,10 @@ struct EQ : public EntityQuery<EQ> {
   }
 };
 
-bool will_collide(EntityID id, vec2 pos, const PieceType &pt) {
+bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
   bool overlaps_with_piece = EQ().whereNotID(id)
                                  .whereHasComponent<Transform>()
-                                 .whereOverlaps(pos, pt.shape)
+                                 .whereOverlaps(pos, shape)
                                  .has_values();
 
   bool overlaps_with_ground = EQ().whereInRange(pos, sz / 2.f).has_values();
@@ -180,12 +180,64 @@ struct Move : System<Transform, IsFalling, PieceType> {
     if (is_down_pressed)
       p += vec2{0, sz};
 
-    if (will_collide(entity.id, p, pt)) {
+    if (will_collide(entity.id, p, pt.shape)) {
       return;
     }
-    //
-    //
     transform.update(p);
+  }
+};
+
+struct Rotate : System<Transform, IsFalling, PieceType> {
+  float timer;
+  float timerReset;
+
+  bool is_up_pressed;
+
+  Rotate() : timer(keyReset), timerReset(keyReset) {}
+  virtual ~Rotate() {}
+
+  virtual bool should_run(float dt) override {
+    if (timer < 0) {
+      timer = timerReset;
+      return true;
+    }
+    timer -= dt;
+    is_up_pressed = raylib::IsKeyDown(raylib::KEY_UP);
+    return false;
+  }
+
+  virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
+                             PieceType &pt, float) override {
+    if (!is_up_pressed) {
+      return;
+    }
+
+    vec2 pos = transform.pos();
+    auto new_angle = (pt.angle + 1) % 4;
+    auto new_shape = type_to_rotated_array(pt.type, new_angle);
+
+    // no collision?
+    if (!will_collide(entity.id, pos, new_shape)) {
+      pt.angle = new_angle;
+      pt.shape = new_shape;
+      return;
+    }
+
+    // rotation didnt fit,
+    // wall kick
+
+    std::array<std::array<std::pair<int, int>, 4>, 4> tests =
+        pt.type == 0 ? long_boi_tests : wall_kick_tests;
+
+    for (auto pair : tests[new_angle]) {
+      vec2 offset = vec2{pair.first * sz, pair.second * sz};
+      if (will_collide(entity.id, pos + offset, new_shape))
+        continue;
+      pt.angle = new_angle;
+      pt.shape = new_shape;
+      transform.update(pos + offset);
+      return;
+    }
   }
 };
 
@@ -208,7 +260,7 @@ struct Fall : System<Transform, IsFalling, PieceType> {
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              PieceType &pt, float) override {
     auto p = transform.pos() + vec2{0, sz};
-    if (will_collide(entity.id, p, pt)) {
+    if (will_collide(entity.id, p, pt.shape)) {
       entity.removeComponent<IsFalling>();
       return;
     }
@@ -273,14 +325,15 @@ int main(void) {
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
   raylib::SetTargetFPS(60);
 
-  for (int i = 0; i < map_w; i++) {
+  for (int i = 0; i < map_w; i += 4) {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
-    entity.addComponent<PieceType>(-1);
+    entity.addComponent<PieceType>(0);
   }
 
   SystemManager systems;
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
+  systems.register_update_system(std::make_unique<Rotate>());
   systems.register_update_system(std::make_unique<Move>());
   systems.register_update_system(std::make_unique<Fall>());
   //
