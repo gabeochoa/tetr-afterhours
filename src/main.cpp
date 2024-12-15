@@ -304,7 +304,7 @@ struct RenderGrid : System<> {
     vec2 size = full_size * szm;
     for (int i = 0; i < map_w; i++) {
       for (int j = 0; j < map_h; j++) {
-        raylib::DrawRectangleV({(i * sz), (j * sz)}, size, raylib::RAYWHITE);
+        raylib::DrawRectangleV({(i * sz), (j * sz)}, size, raylib::GRAY);
       }
     }
   }
@@ -322,7 +322,7 @@ struct RenderPiece : System<Transform, PieceType> {
         raylib::DrawRectangleV(
             {transform.pos().x + (i * sz), transform.pos().y + (j * sz)},
             {sz * szm, sz * szm},
-            entity.has<IsLocked>() ? color::GRAY_
+            entity.has<IsLocked>() ? color::BLACK
                                    : color::piece_color(pieceType.type));
       }
     }
@@ -374,7 +374,7 @@ int main(void) {
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
     {
-      raylib::ClearBackground(raylib::GRAY);
+      raylib::ClearBackground(raylib::BLACK);
       systems.run(raylib::GetFrameTime());
     }
     raylib::EndDrawing();
