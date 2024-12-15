@@ -164,10 +164,11 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       return;
     vec2 p = transform.pos();
     vec2 offset = vec2{0, sz};
-    while (!will_collide(entity.id, transform.pos() + offset, pt.shape)) {
+    while (!will_collide(entity.id, p + offset, pt.shape)) {
       p += offset;
-      transform.update(p);
     }
+    transform.update(p);
+    entity.removeComponent<IsFalling>();
   }
 };
 
