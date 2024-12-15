@@ -32,6 +32,21 @@ float keyReset = 0.15f;
 float sz = 20;
 float szm = 0.8f;
 
+std::vector<vec2> get_pips(const vec2 &pos, const std::array<int, 16> &sh) {
+  std::vector<vec2> my_pips;
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      if (sh[j * 4 + i] == 0)
+        continue;
+      my_pips.push_back({
+          pos.x + (i * sz),
+          pos.y + (j * sz),
+      });
+    }
+  }
+  return my_pips;
+}
+
 //
 #include "colors.h"
 struct Transform : public BaseComponent {
@@ -93,22 +108,6 @@ struct EQ : public EntityQuery<EQ> {
       pips = get_pips(pos, s);
     }
 
-    std::vector<vec2> get_pips(const vec2 &pos,
-                               const std::array<int, 16> &sh) const {
-      std::vector<vec2> my_pips;
-      for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-          if (sh[j * 4 + i] == 0)
-            continue;
-          my_pips.push_back({
-              pos.x + (i * sz),
-              pos.y + (j * sz),
-          });
-        }
-      }
-      return my_pips;
-    }
-
     bool operator()(const Entity &entity) const override {
       auto mypos = entity.get<Transform>().pos();
       if (entity.is_missing<PieceType>()) {
@@ -138,6 +137,12 @@ struct EQ : public EntityQuery<EQ> {
 };
 
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
+  auto pips = get_pips(pos, shape);
+  for (auto &pip : pips) {
+    if (pip.x < 0 || pip.x > (map_w - 1) * sz)
+      return true;
+  }
+
   return EQ()
       .whereNotID(id)
       .whereHasComponent<Transform>()
