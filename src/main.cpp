@@ -44,8 +44,8 @@ float szm = 0.8f;
 
 std::vector<vec2> get_pips(const vec2 &pos, const std::array<int, 16> &sh) {
   std::vector<vec2> my_pips;
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = 0; j < 4; j++) {
       if (sh[j * 4 + i] == 0)
         continue;
       my_pips.push_back({

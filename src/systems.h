@@ -300,7 +300,7 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
     std::array<std::array<std::pair<int, int>, 4>, 4> tests =
         pt.type == 0 ? long_boi_tests : wall_kick_tests;
 
-    for (auto pair : tests[new_angle]) {
+    for (auto pair : tests[(size_t)new_angle]) {
       vec2 offset = vec2{pair.first * sz, pair.second * sz};
       if (will_collide(entity.id, pos + offset, new_shape))
         continue;
@@ -373,8 +373,8 @@ struct RenderPiece : System<Transform, PieceType> {
                             ? color::BLACK_
                             : color::piece_color(pieceType.type);
 
-    for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 4; j++) {
+    for (size_t i = 0; i < 4; i++) {
+      for (size_t j = 0; j < 4; j++) {
         if (pieceType.shape[j * 4 + i] == 0)
           continue;
         raylib::DrawRectangleV(
@@ -403,8 +403,8 @@ struct RenderGhost : System<Transform, IsFalling, PieceType> {
     raylib::Color color = color::piece_color(pt.type);
     color.a = 100;
 
-    for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 4; j++) {
+    for (size_t i = 0; i < 4; i++) {
+      for (size_t j = 0; j < 4; j++) {
         if (pt.shape[j * 4 + i] == 0)
           continue;
         raylib::DrawRectangleV({p.x + (i * sz), p.y + (j * sz)},

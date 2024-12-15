@@ -1,5 +1,17 @@
 #pragma once
 
+#ifdef __APPLE__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
+#pragma clang diagnostic ignored "-Wdeprecated-volatile"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+
+#ifdef WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 #include <array>
 
 // pieces and rotations come from:
@@ -134,3 +146,13 @@ std::array<std::array<std::pair<int, int>, 4>, 4> wall_kick_tests = {{
         {-1, +2},
     }},
 }};
+
+#ifdef __APPLE__
+#pragma clang diagnostic pop
+#else
+#pragma enable_warn
+#endif
+
+#ifdef WIN32
+#pragma GCC diagnostic pop
+#endif
