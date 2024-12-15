@@ -22,6 +22,15 @@ constexpr float distance_sq(const vec2 a, const vec2 b) {
   return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 }
 
+namespace util {
+
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+
+template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
+} // namespace util
+
 //
 int map_h = 33;
 int map_w = 12;
@@ -52,14 +61,6 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape);
 void lock_entity(Entity &entity, const vec2 &pos,
                  const std::array<int, 16> &sh);
 
-enum InputAction {
-  None,
-  Left,
-  Right,
-  Rotate,
-  Drop,
-};
-
 // These are not real header files, im just
 // hijacking the include to paste the files here in this order
 //
@@ -79,8 +80,15 @@ int main(void) {
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
   raylib::SetTargetFPS(60);
 
-  SystemManager systems;
+  // sophie
+  {
+    auto &entity = EntityHelper::createEntity();
+    entity.addComponent<InputCollector>();
+  }
   //
+
+  SystemManager systems;
+
   systems.register_update_system(std::make_unique<InputSystem>());
   //
   systems.register_update_system(std::make_unique<SpawnGround>());

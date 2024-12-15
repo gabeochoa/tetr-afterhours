@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "components.h"
+#include "raylib.h"
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
   auto pips = get_pips(pos, shape);
   for (auto &pip : pips) {
@@ -29,6 +31,120 @@ void lock_entity(Entity &entity, const vec2 &pos,
     new_entity.addComponent<HasCollision>();
   }
 }
+
+struct InputSystem : System<InputCollector> {
+  float DEADZONE = 0.25f;
+
+  enum InputType {
+    Keyboard,
+    Gamepad,
+    GamepadWithAxis,
+  };
+
+  using KeyCode = int;
+  struct GamepadAxisWithDir {
+    raylib::GamepadAxis axis;
+    float dir = -1;
+  };
+  using AnyInput =
+      std::variant<KeyCode, GamepadAxisWithDir, raylib::GamepadButton>;
+  using ValidInputs = std::vector<AnyInput>;
+  //
+  std::map<InputCollector::InputAction, ValidInputs> mapping;
+  //
+
+  InputSystem() {
+    mapping[InputCollector::InputAction::Left] = {
+        raylib::KEY_LEFT,
+        GamepadAxisWithDir{
+            .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+            .dir = -1,
+        },
+    };
+
+    mapping[InputCollector::InputAction::Right] = {
+        raylib::KEY_RIGHT,
+        GamepadAxisWithDir{
+            .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+            .dir = 1,
+        },
+    };
+
+    mapping[InputCollector::InputAction::Rotate] = {
+        raylib::KEY_UP,                                       //
+        raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
+    };
+
+    mapping[InputCollector::InputAction::Drop] = {
+        raylib::KEY_DOWN,                                   //
+        raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
+    };
+  }
+
+  float visit_key(int keycode) {
+    return raylib::IsKeyPressed(keycode) ? 1.f : 0.f;
+  }
+
+  float visit_key_down(int keycode) {
+    return raylib::IsKeyDown(keycode) ? 1.f : 0.f;
+  }
+
+  float visit_axis(GamepadAxisWithDir axis_with_dir) {
+    // Note: this one is a bit more complex because we have to check if you
+    // are pushing in the right direction while also checking the magnitude
+    float mvt = raylib::GetGamepadAxisMovement(0, axis_with_dir.axis);
+    // Note: The 0.25 is how big the deadzone is
+    // TODO consider making the deadzone configurable?
+    if (util::sgn(mvt) == axis_with_dir.dir && abs(mvt) > DEADZONE) {
+      return abs(mvt);
+    }
+    return 0.f;
+  }
+
+  float visit_button(raylib::GamepadButton button) {
+    return raylib::IsGamepadButtonPressed(0, button) ? 1.f : 0.f;
+  }
+
+  float visit_button_down(raylib::GamepadButton button) {
+    return raylib::IsGamepadButtonDown(0, button) ? 1.f : 0.f;
+  }
+
+  float check_single_action(ValidInputs valid_inputs) {
+    float value = 0.f;
+    for (auto &input : valid_inputs) {
+      value =
+          fmax(value,      //
+               std::visit( //
+                   util::overloaded{
+                       //
+                       [this](int keycode) { return visit_key_down(keycode); },
+                       [this](GamepadAxisWithDir axis_with_dir) {
+                         return visit_axis(axis_with_dir);
+                       },
+                       [this](raylib::GamepadButton button) {
+                         return visit_button_down(button);
+                       },
+                       [](auto) {}},
+                   input));
+    }
+    return value;
+  }
+
+  virtual void for_each_with(Entity &, InputCollector &collector,
+                             float dt) override {
+    collector.inputs.clear();
+
+    for (auto &kv : mapping) {
+      InputCollector::InputAction action = kv.first;
+      ValidInputs vis = kv.second;
+      float amount = check_single_action(vis);
+      if (amount > 0.f) {
+        collector.inputs.push_back(InputCollector::InputActionDone{
+            .action = action, .amount_pressed = 1.f, .length_pressed = dt});
+      }
+    }
+  }
+};
 
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
   ForceDrop() {}
@@ -61,25 +177,53 @@ struct Move : System<Transform, IsFalling, PieceType> {
   bool is_left_pressed;
   bool is_right_pressed;
   bool is_down_pressed;
+  bool is_space_pressed;
 
   Move() : timer(keyReset), timerReset(keyReset) {}
   virtual ~Move() {}
 
   virtual bool should_run(float dt) override {
+
     if (timer < 0) {
       timer = timerReset;
+
       return true;
     }
     timer -= dt;
-    is_left_pressed = raylib::IsKeyDown(raylib::KEY_LEFT);
-    is_right_pressed = raylib::IsKeyDown(raylib::KEY_RIGHT);
-    is_down_pressed = raylib::IsKeyDown(raylib::KEY_DOWN);
+
+    OptEntity opt_collector =
+        EQ().whereHasComponent<InputCollector>().gen_first();
+    Entity &collector = opt_collector.asE();
+    InputCollector &inp = collector.get<InputCollector>();
+
+    is_left_pressed = false;
+    is_right_pressed = false;
+    is_down_pressed = false;
+
+    // TODO do we need to eat these?
+    for (auto &actions_done : inp.inputs) {
+      switch (actions_done.action) {
+      case InputCollector::InputAction::Left:
+        is_left_pressed = actions_done.amount_pressed > 0.f;
+        break;
+      case InputCollector::InputAction::Right:
+        is_right_pressed = actions_done.amount_pressed > 0.f;
+        break;
+      case InputCollector::InputAction::Down:
+        is_down_pressed = actions_done.amount_pressed > 0.f;
+        break;
+      case InputCollector::InputAction::Drop:
+        is_space_pressed = actions_done.amount_pressed > 0.f;
+        break;
+      default:
+        break;
+      }
+    }
     return false;
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              PieceType &pt, float) override {
-    bool is_space_pressed = raylib::IsKeyDown(raylib::KEY_SPACE);
 
     vec2 p = transform.pos();
     if (is_left_pressed)
@@ -114,7 +258,22 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
       return true;
     }
     timer -= dt;
-    is_up_pressed = raylib::IsKeyDown(raylib::KEY_UP);
+    is_up_pressed = false;
+
+    OptEntity opt_collector =
+        EQ().whereHasComponent<InputCollector>().gen_first();
+    Entity &collector = opt_collector.asE();
+    InputCollector &inp = collector.get<InputCollector>();
+
+    for (auto &actions_done : inp.inputs) {
+      switch (actions_done.action) {
+      case InputCollector::InputAction::Rotate:
+        is_up_pressed = actions_done.amount_pressed > 0.f;
+        break;
+      default:
+        break;
+      }
+    }
     return false;
   }
 
@@ -291,10 +450,4 @@ struct SpawnGround : System<> {
     }
     return false;
   }
-};
-
-struct InputSystem : System<> {
-  std::vector<InputAction> inputs;
-
-  virtual void once(float) {}
 };

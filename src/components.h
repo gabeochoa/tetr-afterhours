@@ -28,3 +28,20 @@ struct PieceType : public BaseComponent {
   std::array<int, 16> shape;
   int angle;
 };
+
+struct InputCollector : public BaseComponent {
+  enum class InputAction {
+    None,
+    Left,
+    Right,
+    Rotate,
+    Down,
+    Drop,
+  };
+  struct InputActionDone {
+    InputAction action;
+    float amount_pressed;
+    float length_pressed;
+  };
+  std::vector<InputActionDone> inputs;
+};

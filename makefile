@@ -18,30 +18,15 @@ H_FILES := $(wildcard src/**/*.h src/**/*.hpp)
 OBJ_DIR := ./output
 OBJ_FILES := $(SRC_FILES:%.cpp=$(OBJ_DIR)/%.o)
 
+DEPENDS := $(patsubst %.cpp,%.d,$(SOURCES))
+-include $(DEPENDS)
+
+
 OUTPUT_EXE := tetr.exe
 
 CXX := clang++
 
 .PHONY: all clean
 
-all: post-build
-
-main-build: $(OUTPUT_EXE)
-
-post-build: main-build
-	./$(OUTPUT_EXE) 2>&1 $(GAME_LOG)
-
-$(OUTPUT_EXE): $(H_FILES) $(OBJ_FILES)
-	$(CXX) $(FLAGS) $(LEAKFLAGS) $(NOFLAGS) $(INCLUDES) $(LIBS) $(OBJ_FILES) -o $(OUTPUT_EXE)
-
-release: FLAGS=$(RELEASE_FLAGS)
-release: NOFLAGS=
-
-$(OBJ_DIR)/%.o: %.cpp $(H_FILES) makefile
-	$(CXX) $(FLAGS) $(NOFLAGS) $(INCLUDES) -c $< -o $@ -MMD -MF $(@:.o=.d)
-
-%.d: %.cpp
-	$(MAKEDEPEND)
-
-clean:
-	rm -r $(OBJ_DIR)
+all:
+	clang++ $(FLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
