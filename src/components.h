@@ -44,6 +44,7 @@ struct InputCollector : public BaseComponent {
     float length_pressed;
   };
   std::vector<InputActionDone> inputs;
+  float since_last_input = 0.f;
 };
 
 struct NextPieceHolder : public BaseComponent {

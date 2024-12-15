@@ -149,6 +149,12 @@ struct InputSystem : System<InputCollector> {
             .action = action, .amount_pressed = 1.f, .length_pressed = dt});
       }
     }
+
+    if (collector.inputs.size() == 0) {
+      collector.since_last_input += dt;
+    } else {
+      collector.since_last_input = 0;
+    }
   }
 };
 
@@ -357,7 +363,18 @@ struct Fall : System<Transform, IsFalling, PieceType> {
                              PieceType &pt, float) override {
     auto p = transform.pos() + vec2{0, sz};
     if (will_collide(entity.id, p, pt.shape)) {
-      lock_entity(entity, transform.pos(), pt.shape);
+
+      // In the situation where it will collide but you could rotate and keep
+      // going, lets wait a bit if the user is trying to rotate
+
+      OptEntity opt_collector =
+          EQ().whereHasComponent<InputCollector>().gen_first();
+      Entity &collector = opt_collector.asE();
+      InputCollector &inp = collector.get<InputCollector>();
+      if (inp.since_last_input > 1.f) {
+        lock_entity(entity, transform.pos(), pt.shape);
+      }
+
       return;
     }
     //
