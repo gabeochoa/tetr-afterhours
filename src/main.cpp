@@ -24,6 +24,15 @@ constexpr float distance_sq(const vec2 a, const vec2 b) {
 }
 
 //
+int map_h = 33;
+int map_w = 12;
+float TR = 0.25f;
+float keyReset = 0.15f;
+
+float sz = 20;
+float szm = 0.8f;
+
+//
 #include "colors.h"
 struct Transform : public BaseComponent {
   Transform(vec2 pos) : position(pos) {}
@@ -39,8 +48,12 @@ private:
 
 struct IsFalling : public BaseComponent {};
 struct PieceType : public BaseComponent {
-  PieceType(int t) : type(t) {}
+  PieceType(int t) : type(t), angle(0) {
+    shape = type_to_rotated_array(type, angle);
+  }
   int type;
+  std::array<int, 16> shape;
+  int angle;
 };
 
 struct EQ : public EntityQuery<EQ> {
@@ -68,20 +81,73 @@ struct EQ : public EntityQuery<EQ> {
       return a_dist < b_dist;
     });
   }
+
+  struct WhereOverlaps : EntityQuery::Modification {
+    vec2 position;
+    std::array<int, 16> shape;
+    std::vector<vec2> pips;
+
+    explicit WhereOverlaps(vec2 pos, std::array<int, 16> s)
+        : position(pos), shape(s) {
+      pips = get_pips(pos, s);
+    }
+
+    std::vector<vec2> get_pips(const vec2 &pos,
+                               const std::array<int, 16> &sh) const {
+      std::vector<vec2> my_pips;
+      for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+          if (sh[j * 4 + i] == 0)
+            continue;
+          my_pips.push_back({
+              pos.x + (i * sz),
+              pos.y + (j * sz),
+          });
+        }
+      }
+      return my_pips;
+    }
+
+    bool operator()(const Entity &entity) const override {
+      auto mypos = entity.get<Transform>().pos();
+      if (entity.is_missing<PieceType>()) {
+        for (auto &p : pips) {
+          float a_dist = distance_sq(mypos, p);
+          if (a_dist < sz)
+            return true;
+        }
+        return false;
+      }
+
+      auto mypips = get_pips(mypos, entity.get<PieceType>().shape);
+      for (auto &mypip : mypips) {
+        for (auto &p : pips) {
+          float a_dist = distance_sq(mypip, p);
+          if (a_dist < sz)
+            return true;
+        }
+      }
+      return false;
+    }
+  };
+
+  EQ &whereOverlaps(const vec2 &position, std::array<int, 16> shape) {
+    return add_mod(new WhereOverlaps(position, shape));
+  }
 };
 
-bool will_collide(vec2 pos) { return EQ().whereInRange(pos, 2).has_values(); }
+bool will_collide(EntityID id, vec2 pos, const PieceType &pt) {
+  bool overlaps_with_piece = EQ().whereNotID(id)
+                                 .whereHasComponent<Transform>()
+                                 .whereOverlaps(pos, pt.shape)
+                                 .has_values();
 
-//
-int map_h = 33;
-int map_w = 12;
-float TR = 0.25f;
-float keyReset = 0.15f;
+  bool overlaps_with_ground = EQ().whereInRange(pos, sz / 2.f).has_values();
 
-float sz = 20;
-float szm = 0.8f;
+  return overlaps_with_piece || overlaps_with_ground;
+}
 
-struct Move : System<Transform, IsFalling> {
+struct Move : System<Transform, IsFalling, PieceType> {
   float timer;
   float timerReset;
 
@@ -104,8 +170,8 @@ struct Move : System<Transform, IsFalling> {
     return false;
   }
 
-  virtual void for_each_with(Entity &, Transform &transform, IsFalling &,
-                             float) override {
+  virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
+                             PieceType &pt, float) override {
     vec2 p = transform.pos();
     if (is_left_pressed)
       p -= vec2{sz, 0};
@@ -114,7 +180,7 @@ struct Move : System<Transform, IsFalling> {
     if (is_down_pressed)
       p += vec2{0, sz};
 
-    if (will_collide(p)) {
+    if (will_collide(entity.id, p, pt)) {
       return;
     }
     //
@@ -123,7 +189,7 @@ struct Move : System<Transform, IsFalling> {
   }
 };
 
-struct Fall : System<Transform, IsFalling> {
+struct Fall : System<Transform, IsFalling, PieceType> {
   float timer;
   float timerReset;
   Fall() : timer(TR), timerReset(TR) {}
@@ -140,9 +206,9 @@ struct Fall : System<Transform, IsFalling> {
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
-                             float) override {
+                             PieceType &pt, float) override {
     auto p = transform.pos() + vec2{0, sz};
-    if (will_collide(p)) {
+    if (will_collide(entity.id, p, pt)) {
       entity.removeComponent<IsFalling>();
       return;
     }
@@ -169,8 +235,16 @@ struct RenderPiece : System<Transform, PieceType> {
   virtual ~RenderPiece() {}
   virtual void for_each_with(const Entity &, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-    raylib::DrawRectangleV(transform.pos(), {sz * szm, sz * szm},
-                           color::piece_color(pieceType.type));
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        if (pieceType.shape[j * 4 + i] == 0)
+          continue;
+        raylib::DrawRectangleV(
+            {transform.pos().x + (i * sz), transform.pos().y + (j * sz)},
+            {sz * szm, sz * szm}, color::piece_color(pieceType.type));
+      }
+    }
   }
 };
 
@@ -186,6 +260,9 @@ struct SpawnPieceIfNoneFalling : System<> {
     entity.addComponent<Transform>(vec2{20, 20});
     entity.addComponent<IsFalling>();
     entity.addComponent<PieceType>(rand() % 6);
+
+    std::cout << "spawned piece of type " << entity.get<PieceType>().type
+              << std::endl;
   };
 };
 
@@ -198,7 +275,7 @@ int main(void) {
 
   for (int i = 0; i < map_w; i++) {
     auto &entity = EntityHelper::createEntity();
-    entity.addComponent<Transform>(vec2{20.f * i, map_h * 20.f});
+    entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
     entity.addComponent<PieceType>(-1);
   }
 
