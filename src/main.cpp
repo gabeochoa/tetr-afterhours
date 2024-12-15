@@ -75,7 +75,8 @@ bool will_collide(vec2 pos) { return EQ().whereInRange(pos, 2).has_values(); }
 //
 int map_h = 33;
 int map_w = 12;
-float TR = 0.05f;
+float TR = 0.25f;
+float keyReset = 0.15f;
 
 float sz = 20;
 float szm = 0.8f;
@@ -83,9 +84,51 @@ float szm = 0.8f;
 struct Move : System<Transform, IsFalling> {
   float timer;
   float timerReset;
-  Move() : timer(TR), timerReset(TR) {}
 
+  bool is_left_pressed;
+  bool is_right_pressed;
+  bool is_down_pressed;
+
+  Move() : timer(keyReset), timerReset(keyReset) {}
   virtual ~Move() {}
+
+  virtual bool should_run(float dt) override {
+    if (timer < 0) {
+      timer = timerReset;
+      return true;
+    }
+    timer -= dt;
+    is_left_pressed = raylib::IsKeyDown(raylib::KEY_LEFT);
+    is_right_pressed = raylib::IsKeyDown(raylib::KEY_RIGHT);
+    is_down_pressed = raylib::IsKeyDown(raylib::KEY_DOWN);
+    return false;
+  }
+
+  virtual void for_each_with(Entity &, Transform &transform, IsFalling &,
+                             float) override {
+    vec2 p = transform.pos();
+    if (is_left_pressed)
+      p -= vec2{sz, 0};
+    if (is_right_pressed)
+      p += vec2{sz, 0};
+    if (is_down_pressed)
+      p += vec2{0, sz};
+
+    if (will_collide(p)) {
+      return;
+    }
+    //
+    //
+    transform.update(p);
+  }
+};
+
+struct Fall : System<Transform, IsFalling> {
+  float timer;
+  float timerReset;
+  Fall() : timer(TR), timerReset(TR) {}
+
+  virtual ~Fall() {}
 
   virtual bool should_run(float dt) override {
     if (timer < 0) {
@@ -162,6 +205,7 @@ int main(void) {
   SystemManager systems;
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
   systems.register_update_system(std::make_unique<Move>());
+  systems.register_update_system(std::make_unique<Fall>());
   //
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
