@@ -77,6 +77,9 @@ int map_h = 33;
 int map_w = 12;
 float TR = 0.05f;
 
+float sz = 20;
+float szm = 0.8f;
+
 struct Move : System<Transform, IsFalling> {
   float timer;
   float timerReset;
@@ -95,7 +98,7 @@ struct Move : System<Transform, IsFalling> {
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              float) override {
-    auto p = transform.pos() + vec2{0, 20.f};
+    auto p = transform.pos() + vec2{0, sz};
     if (will_collide(p)) {
       entity.removeComponent<IsFalling>();
       return;
@@ -109,9 +112,8 @@ struct Move : System<Transform, IsFalling> {
 struct RenderGrid : System<> {
   virtual ~RenderGrid() {}
   virtual void once(float) {
-    float sz = 20;
     vec2 full_size = {sz, sz};
-    vec2 size = full_size * 0.8f;
+    vec2 size = full_size * szm;
     for (int i = 0; i < map_w; i++) {
       for (int j = 0; j < map_h; j++) {
         raylib::DrawRectangleV({(i * sz), (j * sz)}, size, raylib::RAYWHITE);
@@ -124,7 +126,7 @@ struct RenderPiece : System<Transform, PieceType> {
   virtual ~RenderPiece() {}
   virtual void for_each_with(const Entity &, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-    raylib::DrawRectangleV(transform.pos(), {20 * 0.8f, 20 * 0.8f},
+    raylib::DrawRectangleV(transform.pos(), {sz * szm, sz * szm},
                            color::piece_color(pieceType.type));
   }
 };
