@@ -43,8 +43,6 @@ struct PieceType : public BaseComponent {
   int type;
 };
 
-#include "colors.h"
-
 struct EQ : public EntityQuery<EQ> {
   struct WhereInRange : EntityQuery::Modification {
     vec2 position;
@@ -73,11 +71,25 @@ struct EQ : public EntityQuery<EQ> {
 };
 
 struct Move : System<Transform, IsFalling> {
-  virtual ~Move() {}
-  virtual void for_each_with(Entity &, Transform &transform, IsFalling &,
-                             float dt) override {
-    auto p = transform.pos() + vec2{0, 100.f * dt};
+  float timer;
+  float timerReset;
+  Move() : timer(0.5f), timerReset(0.5f) {}
 
+  virtual ~Move() {}
+
+  virtual bool should_run(float dt) override {
+    if (timer < 0) {
+      timer = timerReset;
+      return true;
+    }
+    timer -= dt;
+    return false;
+  }
+
+  virtual void for_each_with(Entity &, Transform &transform, IsFalling &,
+                             float) override {
+    auto p = transform.pos() + vec2{0, 20.f};
+    //
     //
     transform.update(p);
   }
@@ -85,15 +97,16 @@ struct Move : System<Transform, IsFalling> {
 
 struct RenderGrid : System<> {
   virtual ~RenderGrid() {}
-  virtual void once() {
+  virtual void once(float) {
     float sz = 20;
     vec2 full_size = {sz, sz};
     vec2 size = full_size * 0.8f;
     int map_h = 33;
     int map_w = 12;
-    for (int i = 0; i < map_h; i++) {
-      for (int j = 0; j < map_w; j++) {
-        raylib::DrawRectangleV({i * sz, j * sz}, size, raylib::WHITE);
+    for (int i = 0; i < map_w; i++) {
+      for (int j = 0; j < map_h; j++) {
+        raylib::DrawRectangleV({(i * sz) + 2, (j * sz) + 2}, size,
+                               raylib::RAYWHITE);
       }
     }
   }
@@ -111,21 +124,21 @@ struct RenderPiece : System<Transform, PieceType> {
 struct SpawnPieceIfNoneFalling : System<> {
   virtual ~SpawnPieceIfNoneFalling() {}
 
-  virtual bool should_run() {
+  virtual bool should_run(float) {
     return !EQ().whereHasComponent<IsFalling>().has_values();
   }
 
-  virtual void once() {
+  virtual void once(float) {
     auto &entity = EntityHelper::createEntity();
-    entity.addComponent<Transform>(vec2{10, 10});
+    entity.addComponent<Transform>(vec2{20, 20});
     entity.addComponent<IsFalling>();
     entity.addComponent<PieceType>(rand() % 6);
   };
 };
 
 int main(void) {
-  const int screenWidth = 800;
-  const int screenHeight = 450;
+  const int screenWidth = 720;
+  const int screenHeight = 720;
 
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
   raylib::SetTargetFPS(60);
@@ -141,7 +154,7 @@ int main(void) {
 
     raylib::BeginDrawing();
     {
-      raylib::ClearBackground(raylib::RAYWHITE);
+      raylib::ClearBackground(raylib::GRAY);
       systems.run(raylib::GetFrameTime());
     }
     raylib::EndDrawing();
