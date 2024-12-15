@@ -138,14 +138,11 @@ struct EQ : public EntityQuery<EQ> {
 };
 
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
-  bool overlaps_with_piece = EQ().whereNotID(id)
-                                 .whereHasComponent<Transform>()
-                                 .whereOverlaps(pos, shape)
-                                 .has_values();
-
-  bool overlaps_with_ground = EQ().whereInRange(pos, sz / 2.f).has_values();
-
-  return overlaps_with_piece || overlaps_with_ground;
+  return EQ()
+      .whereNotID(id)
+      .whereHasComponent<Transform>()
+      .whereOverlaps(pos, shape)
+      .has_values();
 }
 
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
