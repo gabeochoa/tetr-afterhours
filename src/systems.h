@@ -76,7 +76,12 @@ struct InputSystem : System<InputCollector> {
     };
 
     mapping[InputCollector::InputAction::Drop] = {
-        raylib::KEY_DOWN,                                   //
+        raylib::KEY_DOWN,                                     //
+        raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
+    };
+
+    mapping[InputCollector::InputAction::Drop] = {
+        raylib::KEY_SPACE,                                  //
         raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
     };
   }
