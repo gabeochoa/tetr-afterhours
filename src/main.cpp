@@ -329,6 +329,33 @@ struct RenderPiece : System<Transform, PieceType> {
   }
 };
 
+struct RenderGhost : System<Transform, IsFalling, PieceType> {
+  virtual ~RenderGhost() {}
+  virtual void for_each_with(const Entity &entity, const Transform &transform,
+                             const IsFalling &, const PieceType &pt,
+                             float) const override {
+    vec2 p = transform.pos();
+    vec2 offset = vec2{0, sz};
+    while (!will_collide(entity.id, p + offset, pt.shape)) {
+      if (p.y > map_h * sz)
+        break;
+      p += offset;
+    }
+
+    raylib::Color color = color::piece_color(pt.type);
+    color.a = 100;
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        if (pt.shape[j * 4 + i] == 0)
+          continue;
+        raylib::DrawRectangleV({p.x + (i * sz), p.y + (j * sz)},
+                               {sz * szm, sz * szm}, color);
+      }
+    }
+  }
+};
+
 struct SpawnPieceIfNoneFalling : System<> {
   virtual ~SpawnPieceIfNoneFalling() {}
 
@@ -370,6 +397,7 @@ int main(void) {
   //
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
+  systems.register_render_system(std::make_unique<RenderGhost>());
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
