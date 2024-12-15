@@ -443,6 +443,25 @@ struct ClearLine : System<> {
   };
 };
 
+struct SpawnGround : System<> {
+  bool init = false;
+  virtual ~SpawnGround() {}
+
+  virtual bool should_run(float) {
+    if (!init) {
+      init = true;
+      for (int i = 0; i < map_w; i += 4) {
+        auto &entity = EntityHelper::createEntity();
+        entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
+        entity.addComponent<IsGround>();
+        entity.addComponent<HasCollision>();
+        entity.addComponent<PieceType>(0);
+      }
+    }
+    return false;
+  }
+};
+
 int main(void) {
   const int screenWidth = 720;
   const int screenHeight = 720;
@@ -450,15 +469,8 @@ int main(void) {
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
   raylib::SetTargetFPS(60);
 
-  for (int i = 0; i < map_w; i += 4) {
-    auto &entity = EntityHelper::createEntity();
-    entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
-    entity.addComponent<IsGround>();
-    entity.addComponent<HasCollision>();
-    entity.addComponent<PieceType>(0);
-  }
-
   SystemManager systems;
+  systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
   systems.register_update_system(std::make_unique<ForceDrop>());
   systems.register_update_system(std::make_unique<Rotate>());
