@@ -45,3 +45,8 @@ struct InputCollector : public BaseComponent {
   };
   std::vector<InputActionDone> inputs;
 };
+
+struct NextPieceHolder : public BaseComponent {
+  int next_type;
+  NextPieceHolder() : next_type(rand() % 6) {}
+};

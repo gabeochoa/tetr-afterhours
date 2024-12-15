@@ -32,16 +32,17 @@ template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 } // namespace util
 
 //
-int map_h = 33;
-int map_w = 12;
+const int map_h = 33;
+const int map_w = 12;
+
+const float keyReset = 0.05f;
+const float dropReset = 0.10f;
+const float rotateReset = 0.10f;
+
+const float sz = 20;
+const float szm = 0.8f;
 
 float TR = 0.25f;
-float keyReset = 0.05f;
-float dropReset = 0.10f;
-float rotateReset = 0.10f;
-
-float sz = 20;
-float szm = 0.8f;
 
 std::vector<vec2> get_pips(const vec2 &pos, const std::array<int, 16> &sh) {
   std::vector<vec2> my_pips;
@@ -85,6 +86,7 @@ int main(void) {
   {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<InputCollector>();
+    entity.addComponent<NextPieceHolder>();
   }
 
   SystemManager systems;

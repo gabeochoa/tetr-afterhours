@@ -438,23 +438,26 @@ struct RenderGhost : System<Transform, IsFalling, PieceType> {
   }
 };
 
-struct SpawnPieceIfNoneFalling : System<> {
+struct SpawnPieceIfNoneFalling : System<NextPieceHolder> {
   virtual ~SpawnPieceIfNoneFalling() {}
 
-  virtual bool should_run(float) {
+  virtual bool should_run(float) override {
     return !EQ().whereHasComponent<IsFalling>().has_values();
   }
 
-  virtual void once(float) {
+  virtual void for_each_with(Entity &, NextPieceHolder &nph, float) override {
+
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<Transform>(vec2{20, 20});
     entity.addComponent<IsFalling>();
     entity.addComponent<HasCollision>();
-    entity.addComponent<PieceType>(rand() % 6);
+    entity.addComponent<PieceType>(nph.next_type);
+
+    nph.next_type = (rand() % 6);
 
     std::cout << "spawned piece of type " << entity.get<PieceType>().type
               << std::endl;
-  };
+  }
 };
 
 struct SpawnGround : System<> {
