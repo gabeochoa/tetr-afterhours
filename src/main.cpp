@@ -103,6 +103,7 @@ int main(void) {
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
   systems.register_render_system(std::make_unique<RenderGhost>());
+  systems.register_render_system(std::make_unique<RenderPreview>());
   systems.register_render_system(std::make_unique<RenderLocked>());
 
   while (!raylib::WindowShouldClose()) {

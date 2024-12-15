@@ -2,6 +2,7 @@
 #pragma once
 
 #include "components.h"
+#include "piece_data.h"
 #include "raylib.h"
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
   auto pips = get_pips(pos, shape);
@@ -411,6 +412,26 @@ struct RenderPiece : System<Transform, PieceType> {
   }
 };
 
+struct RenderPreview : System<NextPieceHolder> {
+  virtual ~RenderPreview() {}
+  virtual void for_each_with(const Entity &entity, const NextPieceHolder &nph,
+                             float) const override {
+    vec2 p = {260, 60};
+    auto shape = type_to_rotated_array(nph.next_type, 0);
+    raylib::Color color = color::piece_color(nph.next_type);
+
+    raylib::DrawText("Next Piece", p.x, p.y - (2 * sz), sz, raylib::RAYWHITE);
+
+    for (size_t i = 0; i < 4; i++) {
+      for (size_t j = 0; j < 4; j++) {
+        if (shape[j * 4 + i] == 0)
+          continue;
+        raylib::DrawRectangleV({p.x + (i * sz), p.y + (j * sz)},
+                               {sz * szm, sz * szm}, color);
+      }
+    }
+  }
+};
 struct RenderGhost : System<Transform, IsFalling, PieceType> {
   virtual ~RenderGhost() {}
   virtual void for_each_with(const Entity &entity, const Transform &transform,
