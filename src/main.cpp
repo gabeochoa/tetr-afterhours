@@ -27,7 +27,8 @@ constexpr float distance_sq(const vec2 a, const vec2 b) {
 int map_h = 33;
 int map_w = 12;
 float TR = 0.25f;
-float keyReset = 0.15f;
+float keyReset = 0.05f;
+float rotateReset = 0.10f;
 
 float sz = 20;
 float szm = 0.8f;
@@ -243,7 +244,7 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
 
   bool is_up_pressed;
 
-  Rotate() : timer(keyReset), timerReset(keyReset) {}
+  Rotate() : timer(rotateReset), timerReset(rotateReset) {}
   virtual ~Rotate() {}
 
   virtual bool should_run(float dt) override {
