@@ -37,6 +37,7 @@ int map_w = 12;
 
 float TR = 0.25f;
 float keyReset = 0.05f;
+float dropReset = 0.10f;
 float rotateReset = 0.10f;
 
 float sz = 20;
@@ -85,7 +86,6 @@ int main(void) {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<InputCollector>();
   }
-  //
 
   SystemManager systems;
 

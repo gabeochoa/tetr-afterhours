@@ -147,13 +147,39 @@ struct InputSystem : System<InputCollector> {
 };
 
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
-  ForceDrop() {}
+  float timer;
+  float timerReset;
+  ForceDrop() : timer(dropReset), timerReset(dropReset) {}
   virtual ~ForceDrop() {}
 
   bool is_space = false;
 
-  void once(float) override {
-    is_space = raylib::IsKeyPressed(raylib::KEY_SPACE);
+  virtual bool should_run(float dt) override {
+    if (timer < 0) {
+      timer = timerReset;
+
+      return is_space;
+    }
+    timer -= dt;
+
+    OptEntity opt_collector =
+        EQ().whereHasComponent<InputCollector>().gen_first();
+    Entity &collector = opt_collector.asE();
+    InputCollector &inp = collector.get<InputCollector>();
+
+    is_space = false;
+
+    for (auto &actions_done : inp.inputs) {
+      switch (actions_done.action) {
+      case InputCollector::InputAction::Drop:
+        is_space = actions_done.amount_pressed > 0.f;
+        break;
+      default:
+        break;
+      }
+    }
+
+    return false;
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
@@ -177,7 +203,6 @@ struct Move : System<Transform, IsFalling, PieceType> {
   bool is_left_pressed;
   bool is_right_pressed;
   bool is_down_pressed;
-  bool is_space_pressed;
 
   Move() : timer(keyReset), timerReset(keyReset) {}
   virtual ~Move() {}
@@ -212,9 +237,6 @@ struct Move : System<Transform, IsFalling, PieceType> {
       case InputCollector::InputAction::Down:
         is_down_pressed = actions_done.amount_pressed > 0.f;
         break;
-      case InputCollector::InputAction::Drop:
-        is_space_pressed = actions_done.amount_pressed > 0.f;
-        break;
       default:
         break;
       }
@@ -231,9 +253,6 @@ struct Move : System<Transform, IsFalling, PieceType> {
     if (is_right_pressed)
       p += vec2{sz, 0};
     if (is_down_pressed)
-      p += vec2{0, sz};
-
-    if (is_space_pressed)
       p += vec2{0, sz};
 
     if (will_collide(entity.id, p, pt.shape)) {
