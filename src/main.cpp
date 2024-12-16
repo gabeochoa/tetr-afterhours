@@ -144,28 +144,35 @@ int main(void) {
   SystemManager systems;
 
   // debug systems
-  systems.register_update_system(
-      std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
-  input::enforce_singletons<InputAction>(systems);
+  {
+    systems.register_update_system(
+        std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
+    input::enforce_singletons<InputAction>(systems);
+  }
 
   // external plugins
-  systems.register_update_system(
-      std::make_unique<afterhours::input::InputSystem<InputAction>>());
+  { input::register_update_systems<InputAction>(systems); }
+
   // updates
-  systems.register_update_system(std::make_unique<SpawnGround>());
-  systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
-  systems.register_update_system(std::make_unique<ForceDrop>());
-  systems.register_update_system(std::make_unique<Rotate>());
-  systems.register_update_system(std::make_unique<Move>());
-  systems.register_update_system(std::make_unique<Fall>());
-  systems.register_update_system(std::make_unique<ClearLine>());
+  {
+    systems.register_update_system(std::make_unique<SpawnGround>());
+    systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
+    systems.register_update_system(std::make_unique<ForceDrop>());
+    systems.register_update_system(std::make_unique<Rotate>());
+    systems.register_update_system(std::make_unique<Move>());
+    systems.register_update_system(std::make_unique<Fall>());
+    systems.register_update_system(std::make_unique<ClearLine>());
+  }
+
   // renders
-  systems.register_render_system(std::make_unique<RenderGrid>());
-  systems.register_render_system(std::make_unique<RenderPiece>());
-  systems.register_render_system(std::make_unique<RenderGhost>());
-  systems.register_render_system(std::make_unique<RenderPreview>());
-  systems.register_render_system(
-      std::make_unique<input::RenderConnectedGamepads>());
+  {
+    systems.register_render_system(std::make_unique<RenderGrid>());
+    systems.register_render_system(std::make_unique<RenderPiece>());
+    systems.register_render_system(std::make_unique<RenderGhost>());
+    systems.register_render_system(std::make_unique<RenderPreview>());
+    systems.register_render_system(
+        std::make_unique<input::RenderConnectedGamepads>());
+  }
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
