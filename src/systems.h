@@ -395,6 +395,45 @@ struct Fall : System<Transform, IsFalling, PieceType> {
   }
 };
 
+struct ClearLine : System<Grid> {
+  virtual ~ClearLine() {}
+  virtual void for_each_with(Entity &, Grid &gridC, float) override {
+
+    auto &grid = gridC.grid;
+
+    int totalCleared = 0;
+    for (size_t j = 0; j < map_h; j++) {
+
+      int sum = 0;
+      for (size_t i = 0; i < map_w; i++)
+        if (grid[i][j] > 0)
+          sum++;
+
+      if (sum != map_w)
+        continue;
+
+      // clear row()
+      for (size_t i = 0; i < map_w; i++)
+        grid[i][j] = 0;
+
+      // move everything above down
+      for (size_t k = j; k > 0; k--) {
+        for (size_t i = 0; i < map_w; i++)
+          grid[i][k] = grid[i][k - 1];
+      }
+
+      // replace top row with empty tiles
+      for (size_t i = 0; i < map_w; i++)
+        grid[i][0] = 0;
+
+      // Increment num lines and speed up game
+      totalCleared++;
+      // linesCleared++;
+      // speedup();
+    }
+  }
+};
+
 struct RenderGrid : System<Grid> {
   virtual ~RenderGrid() {}
   virtual void for_each_with(const Entity &, const Grid &gridC,

@@ -100,6 +100,7 @@ int main(void) {
   systems.register_update_system(std::make_unique<Rotate>());
   systems.register_update_system(std::make_unique<Move>());
   systems.register_update_system(std::make_unique<Fall>());
+  systems.register_update_system(std::make_unique<ClearLine>());
   //
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
