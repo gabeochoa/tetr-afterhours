@@ -166,21 +166,20 @@ int main(void) {
 
   // renders
   {
+    systems.register_render_system(
+        []() { raylib::ClearBackground(color::BLACK_); });
     systems.register_render_system(std::make_unique<RenderGrid>());
     systems.register_render_system(std::make_unique<RenderPiece>());
     systems.register_render_system(std::make_unique<RenderGhost>());
     systems.register_render_system(std::make_unique<RenderPreview>());
     systems.register_render_system(
         std::make_unique<input::RenderConnectedGamepads>());
+    systems.register_render_system([]() { raylib::DrawFPS(500, 10); });
   }
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
-    {
-      raylib::ClearBackground(color::BLACK_);
-      systems.run(raylib::GetFrameTime());
-      raylib::DrawFPS(500, 10);
-    }
+    { systems.run(raylib::GetFrameTime()); }
     raylib::EndDrawing();
   }
 
