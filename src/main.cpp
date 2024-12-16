@@ -146,10 +146,11 @@ int main(void) {
   // debug systems
   systems.register_update_system(
       std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
-
-  // external plugins
   input::enforce_singletons<InputAction>(systems);
 
+  // external plugins
+  systems.register_update_system(
+      std::make_unique<afterhours::input::InputSystem<InputAction>>());
   // updates
   systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
