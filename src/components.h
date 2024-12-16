@@ -29,24 +29,6 @@ struct PieceType : public BaseComponent {
   int angle;
 };
 
-struct InputCollector : public BaseComponent {
-  enum class InputAction {
-    None,
-    Left,
-    Right,
-    Rotate,
-    Down,
-    Drop,
-  };
-  struct InputActionDone {
-    InputAction action;
-    float amount_pressed;
-    float length_pressed;
-  };
-  std::vector<InputActionDone> inputs;
-  float since_last_input = 0.f;
-};
-
 struct NextPieceHolder : public BaseComponent {
   int next_type;
   NextPieceHolder() : next_type(rand() % 6) {}

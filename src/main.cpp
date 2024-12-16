@@ -3,11 +3,14 @@
 //
 #include <iostream>
 
+#include "rl.h"
+//
 #define AFTER_HOURS_ENTITY_HELPER
 #define AFTER_HOURS_ENTITY_QUERY
 #define AFTER_HOURS_SYSTEM
 #include "afterhours/ah.h"
-#include "rl.h"
+#define AFTER_HOURS_USE_RAYLIB
+#include "afterhours/src/plugins/input_system.h"
 #include <cassert>
 
 //
@@ -72,8 +75,55 @@ void lock_entity(Entity &entity, const vec2 &pos,
 //
 #include "query.h"
 //
+
+enum class InputAction {
+  None,
+  Left,
+  Right,
+  Rotate,
+  Down,
+  Drop,
+};
+
+using afterhours::input::InputCollector;
+//
 #include "systems.h"
 //
+
+auto get_mapping() {
+  std::map<InputAction, input::ValidInputs> mapping;
+  mapping[InputAction::Left] = {
+      raylib::KEY_LEFT,
+      input::GamepadAxisWithDir{
+          .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+          .dir = -1,
+      },
+  };
+
+  mapping[InputAction::Right] = {
+      raylib::KEY_RIGHT,
+      input::GamepadAxisWithDir{
+          .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+          .dir = 1,
+      },
+  };
+
+  mapping[InputAction::Rotate] = {
+      raylib::KEY_UP,                                       //
+      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
+  };
+
+  mapping[InputAction::Drop] = {
+      raylib::KEY_DOWN,                                     //
+      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
+  };
+
+  mapping[InputAction::Drop] = {
+      raylib::KEY_SPACE,                                  //
+      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
+  };
+  return mapping;
+}
 
 int main(void) {
   const int screenWidth = 720;
@@ -85,14 +135,16 @@ int main(void) {
   // sophie
   {
     auto &entity = EntityHelper::createEntity();
-    entity.addComponent<InputCollector>();
+    entity.addComponent<InputCollector<InputAction>>();
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
 
   SystemManager systems;
 
-  systems.register_update_system(std::make_unique<InputSystem>());
+  systems.register_update_system(
+      std::make_unique<afterhours::input::InputSystem<InputAction>>(
+          get_mapping()));
   //
   systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
