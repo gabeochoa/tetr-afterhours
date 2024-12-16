@@ -30,3 +30,8 @@ CXX := clang++
 
 all:
 	clang++ $(FLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
+
+prof:
+	rm -rf recording.trace/
+	xctrace record --template 'Game Performance' --output 'recording.trace' --launch $(OUTPUT_EXE)
+

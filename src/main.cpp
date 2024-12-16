@@ -80,7 +80,7 @@ int main(void) {
   const int screenHeight = 720;
 
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
-  raylib::SetTargetFPS(60);
+  // raylib::SetTargetFPS(60);
 
   // sophie
   {
@@ -111,6 +111,7 @@ int main(void) {
     {
       raylib::ClearBackground(color::BLACK_);
       systems.run(raylib::GetFrameTime());
+      raylib::DrawFPS(500, 10);
     }
     raylib::EndDrawing();
   }
