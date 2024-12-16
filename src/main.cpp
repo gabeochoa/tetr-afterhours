@@ -10,6 +10,7 @@
 #define AFTER_HOURS_SYSTEM
 #include "afterhours/ah.h"
 #define AFTER_HOURS_USE_RAYLIB
+#include "afterhours/src/plugins/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include <cassert>
 
@@ -135,18 +136,21 @@ int main(void) {
   // sophie
   {
     auto &entity = EntityHelper::createEntity();
-    entity.addComponent<InputCollector<InputAction>>();
-    entity.addComponent<input::TracksMaxGamepadID>();
-    entity.addComponent<input::TracksInputMapping<InputAction>>(get_mapping());
+    input::add_singleton_components<InputAction>(entity, get_mapping());
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
 
   SystemManager systems;
 
+  // debug systems
   systems.register_update_system(
-      std::make_unique<afterhours::input::InputSystem<InputAction>>());
-  //
+      std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
+
+  // external plugins
+  input::enforce_singletons<InputAction>(systems);
+
+  // updates
   systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
   systems.register_update_system(std::make_unique<ForceDrop>());
@@ -154,7 +158,7 @@ int main(void) {
   systems.register_update_system(std::make_unique<Move>());
   systems.register_update_system(std::make_unique<Fall>());
   systems.register_update_system(std::make_unique<ClearLine>());
-  //
+  // renders
   systems.register_render_system(std::make_unique<RenderGrid>());
   systems.register_render_system(std::make_unique<RenderPiece>());
   systems.register_render_system(std::make_unique<RenderGhost>());
