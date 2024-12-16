@@ -401,7 +401,6 @@ struct ClearLine : System<Grid> {
 
     auto &grid = gridC.grid;
 
-    int totalCleared = 0;
     for (size_t j = 0; j < map_h; j++) {
 
       int sum = 0;
