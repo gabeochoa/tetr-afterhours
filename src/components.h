@@ -53,5 +53,6 @@ struct NextPieceHolder : public BaseComponent {
 };
 
 struct Grid : public BaseComponent {
+  int totalCleared = 0;
   std::array<std::array<int, map_h>, map_w> grid;
 };

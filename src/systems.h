@@ -427,9 +427,10 @@ struct ClearLine : System<Grid> {
         grid[i][0] = 0;
 
       // Increment num lines and speed up game
-      totalCleared++;
-      // linesCleared++;
-      // speedup();
+      gridC.totalCleared++;
+
+      // speed up
+      TR -= 0.1f;
     }
   }
 };
