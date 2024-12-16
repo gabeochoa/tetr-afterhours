@@ -90,6 +90,20 @@ using afterhours::input::InputCollector;
 #include "systems.h"
 //
 
+struct RenderConnectedGamepads : System<input::TracksMaxGamepadID> {
+
+  virtual void for_each_with(const Entity &,
+                             const input::TracksMaxGamepadID &mxGamepadID,
+                             float) const override {
+
+    vec2 p = {400, 60};
+    raylib::DrawText(("Gamepads connected: " +
+                      std::to_string(mxGamepadID.max_gamepad_available))
+                         .c_str(),
+                     (int)p.x, (int)(p.y - (2 * sz)), (int)sz, raylib::RED);
+  }
+};
+
 auto get_mapping() {
   std::map<InputAction, input::ValidInputs> mapping;
   mapping[InputAction::Left] = {
@@ -136,6 +150,7 @@ int main(void) {
   {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<InputCollector<InputAction>>();
+    entity.addComponent<input::TracksMaxGamepadID>();
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
@@ -158,6 +173,7 @@ int main(void) {
   systems.register_render_system(std::make_unique<RenderPiece>());
   systems.register_render_system(std::make_unique<RenderGhost>());
   systems.register_render_system(std::make_unique<RenderPreview>());
+  systems.register_render_system(std::make_unique<RenderConnectedGamepads>());
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
