@@ -137,6 +137,7 @@ int main(void) {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<InputCollector<InputAction>>();
     entity.addComponent<input::TracksMaxGamepadID>();
+    entity.addComponent<input::TracksInputMapping<InputAction>>(get_mapping());
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
@@ -144,8 +145,7 @@ int main(void) {
   SystemManager systems;
 
   systems.register_update_system(
-      std::make_unique<afterhours::input::InputSystem<InputAction>>(
-          get_mapping()));
+      std::make_unique<afterhours::input::InputSystem<InputAction>>());
   //
   systems.register_update_system(std::make_unique<SpawnGround>());
   systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
