@@ -1,16 +1,26 @@
 
 #pragma once
 
+#include "colors.h"
 #include "components.h"
 #include "piece_data.h"
 #include "raylib.h"
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
+
+  OptEntity opt_grid = EQ().whereHasComponent<Grid>().gen_first();
+  Grid &gridC = opt_grid.asE().get<Grid>();
+
   auto pips = get_pips(pos, shape);
   for (auto &pip : pips) {
+    // check inside map
     if (pip.x < 0 || pip.x > (map_w - 1) * sz)
+      return true;
+    // check if locked
+    if (gridC.grid[(size_t)(pip.x / sz)][(size_t)(pip.y / sz)] > 0)
       return true;
   }
 
+  // check ground
   return EQ()
       .whereNotID(id)
       .whereHasComponent<HasCollision>()
@@ -24,12 +34,14 @@ void lock_entity(Entity &entity, const vec2 &pos,
   entity.removeComponent<IsFalling>();
   entity.cleanup = true;
 
+  OptEntity opt_grid = EQ().whereHasComponent<Grid>().gen_first();
+  Grid &gridC = opt_grid.asE().get<Grid>();
+
   const auto &pips = get_pips(pos, sh);
   for (auto &pip : pips) {
-    auto &new_entity = EntityHelper::createEntity();
-    new_entity.addComponent<Transform>(pip);
-    new_entity.addComponent<IsLocked>();
-    new_entity.addComponent<HasCollision>();
+    size_t i = (size_t)(pip.x / sz);
+    size_t j = (size_t)(pip.y / sz);
+    gridC.grid[i][j] = 1;
   }
 }
 
@@ -383,26 +395,18 @@ struct Fall : System<Transform, IsFalling, PieceType> {
   }
 };
 
-struct RenderGrid : System<> {
+struct RenderGrid : System<Grid> {
   virtual ~RenderGrid() {}
-  virtual void once(float) {
-    vec2 full_size = {sz, sz};
-    vec2 size = full_size * szm;
-    for (int i = 0; i < map_w; i++) {
-      for (int j = 0; j < map_h; j++) {
-        raylib::DrawRectangleV({(i * sz), (j * sz)}, size, raylib::GRAY);
+  virtual void for_each_with(const Entity &, const Grid &gridC,
+                             float) const override {
+    vec2 size = {sz * szm, sz * szm};
+    for (size_t i = 0; i < map_w; i++) {
+      for (size_t j = 0; j < map_h; j++) {
+        int val = gridC.grid[i][j];
+        raylib::DrawRectangleV({(i * sz), (j * sz)}, size,
+                               val == 0 ? color::GRAY_ : color::BLACK);
       }
     }
-  }
-};
-
-struct RenderLocked : System<Transform, IsLocked> {
-  virtual ~RenderLocked() {}
-  virtual void for_each_with(const Entity &, const Transform &transform,
-                             const IsLocked &, float) const override {
-
-    raylib::Color col = color::BLACK;
-    raylib::DrawRectangleV(transform.pos(), {sz * szm, sz * szm}, col);
   }
 };
 

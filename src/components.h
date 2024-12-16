@@ -51,3 +51,7 @@ struct NextPieceHolder : public BaseComponent {
   int next_type;
   NextPieceHolder() : next_type(rand() % 6) {}
 };
+
+struct Grid : public BaseComponent {
+  std::array<std::array<int, map_h>, map_w> grid;
+};

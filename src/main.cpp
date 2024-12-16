@@ -80,13 +80,14 @@ int main(void) {
   const int screenHeight = 720;
 
   raylib::InitWindow(screenWidth, screenHeight, "tetr-afterhours");
-  // raylib::SetTargetFPS(60);
+  raylib::SetTargetFPS(200);
 
   // sophie
   {
     auto &entity = EntityHelper::createEntity();
     entity.addComponent<InputCollector>();
     entity.addComponent<NextPieceHolder>();
+    entity.addComponent<Grid>();
   }
 
   SystemManager systems;
@@ -104,7 +105,6 @@ int main(void) {
   systems.register_render_system(std::make_unique<RenderPiece>());
   systems.register_render_system(std::make_unique<RenderGhost>());
   systems.register_render_system(std::make_unique<RenderPreview>());
-  systems.register_render_system(std::make_unique<RenderLocked>());
 
   while (!raylib::WindowShouldClose()) {
     raylib::BeginDrawing();
