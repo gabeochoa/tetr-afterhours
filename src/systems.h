@@ -68,6 +68,8 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       return false;
     }
 
+    is_space = false;
+
     for (auto &actions_done : inpc.inputs()) {
       switch (actions_done.action) {
       case InputAction::Drop:
