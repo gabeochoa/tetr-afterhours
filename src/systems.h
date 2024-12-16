@@ -62,15 +62,13 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
     }
     timer -= dt;
 
-    OptEntity opt_collector =
-        EQ().whereHasComponent<InputCollector<InputAction>>().gen_first();
-    Entity &collector = opt_collector.asE();
-    InputCollector<InputAction> &inp =
-        collector.get<InputCollector<InputAction>>();
+    input::PossibleInputCollector<InputAction> inpc =
+        input::get_input_collector<InputAction>();
+    if (!inpc.has_value()) {
+      return false;
+    }
 
-    is_space = false;
-
-    for (auto &actions_done : inp.inputs) {
+    for (auto &actions_done : inpc.inputs()) {
       switch (actions_done.action) {
       case InputAction::Drop:
         is_space = actions_done.amount_pressed > 0.f;
@@ -117,18 +115,18 @@ struct Move : System<Transform, IsFalling, PieceType> {
     }
     timer -= dt;
 
-    OptEntity opt_collector =
-        EQ().whereHasComponent<InputCollector<InputAction>>().gen_first();
-    Entity &collector = opt_collector.asE();
-    InputCollector<InputAction> &inp =
-        collector.get<InputCollector<InputAction>>();
-
     is_left_pressed = false;
     is_right_pressed = false;
     is_down_pressed = false;
 
+    input::PossibleInputCollector<InputAction> inpc =
+        input::get_input_collector<InputAction>();
+    if (!inpc.has_value()) {
+      return false;
+    }
+
     // TODO do we need to eat these?
-    for (auto &actions_done : inp.inputs) {
+    for (auto &actions_done : inpc.inputs()) {
       switch (actions_done.action) {
       case InputAction::Left:
         is_left_pressed = actions_done.amount_pressed > 0.f;
@@ -181,13 +179,13 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
     timer -= dt;
     is_up_pressed = false;
 
-    OptEntity opt_collector =
-        EQ().whereHasComponent<InputCollector<InputAction>>().gen_first();
-    Entity &collector = opt_collector.asE();
-    InputCollector<InputAction> &inp =
-        collector.get<InputCollector<InputAction>>();
+    input::PossibleInputCollector<InputAction> inpc =
+        input::get_input_collector<InputAction>();
+    if (!inpc.has_value()) {
+      return false;
+    }
 
-    for (auto &actions_done : inp.inputs) {
+    for (auto &actions_done : inpc.inputs()) {
       switch (actions_done.action) {
       case InputAction::Rotate:
         is_up_pressed = actions_done.amount_pressed > 0.f;
@@ -258,12 +256,9 @@ struct Fall : System<Transform, IsFalling, PieceType> {
       // In the situation where it will collide but you could rotate and keep
       // going, lets wait a bit if the user is trying to rotate
 
-      OptEntity opt_collector =
-          EQ().whereHasComponent<InputCollector<InputAction>>().gen_first();
-      Entity &collector = opt_collector.asE();
-      InputCollector<InputAction> &inp =
-          collector.get<InputCollector<InputAction>>();
-      if (inp.since_last_input > 1.f) {
+      input::PossibleInputCollector<InputAction> inpc =
+          input::get_input_collector<InputAction>();
+      if (inpc.has_value() && inpc.since_last_input() > 1.f) {
         lock_entity(entity, transform.pos(), pt.shape);
       }
 
