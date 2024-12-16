@@ -12,6 +12,7 @@
 #define AFTER_HOURS_USE_RAYLIB
 #include "afterhours/src/plugins/developer.h"
 #include "afterhours/src/plugins/input_system.h"
+#include "afterhours/src/plugins/window_manager.h"
 #include <cassert>
 
 //
@@ -126,6 +127,21 @@ auto get_mapping() {
   return mapping;
 }
 
+struct RenderFPS : System<window_manager::ProvidesCurrentResolution> {
+  virtual ~RenderFPS() {}
+  virtual void for_each_with(
+      const Entity &,
+      const window_manager::ProvidesCurrentResolution &pCurrentResolution,
+      float) const override {
+    raylib::DrawFPS((int)(pCurrentResolution.width - 80), 0);
+  }
+};
+
+void enforce_singletons(SystemManager &systems) {
+  systems.register_update_system(
+      std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
+}
+
 int main(void) {
   const int screenWidth = 720;
   const int screenHeight = 720;
@@ -137,6 +153,8 @@ int main(void) {
   {
     auto &entity = EntityHelper::createEntity();
     input::add_singleton_components<InputAction>(entity, get_mapping());
+    window_manager::add_singleton_components(entity, screenWidth, screenHeight,
+                                             200);
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
@@ -145,9 +163,9 @@ int main(void) {
 
   // debug systems
   {
-    systems.register_update_system(
-        std::make_unique<afterhours::developer::EnforceSingleton<Grid>>());
+    enforce_singletons(systems);
     input::enforce_singletons<InputAction>(systems);
+    window_manager::enforce_singletons(systems);
   }
 
   // external plugins
@@ -174,7 +192,7 @@ int main(void) {
     systems.register_render_system(std::make_unique<RenderPreview>());
     systems.register_render_system(
         std::make_unique<input::RenderConnectedGamepads>());
-    systems.register_render_system([]() { raylib::DrawFPS(500, 10); });
+    systems.register_render_system(std::make_unique<RenderFPS>());
   }
 
   while (!raylib::WindowShouldClose()) {
