@@ -1,7 +1,8 @@
 [
   {
     "arguments": [
-      "/usr/bin/c++",
+      "/usr/bin/clang++",
+      "-c",
       "-std=c++2a",
       "-Wall",
       "-Wextra",
@@ -12,21 +13,14 @@
       "-Wconversion",
       "-g",
       "-I/opt/homebrew/Cellar/raylib/4.5.0/include",
-      "-Wno-deprecated-volatile",
-      "-Wno-missing-field-initializers",
-      "-Wno-c99-extensions",
-      "-Wno-unused-function",
-      "-Wno-sign-conversion",
-      "-Wno-implicit-int-float-conversion",
-      "-Werror",
       "-Ivendor/",
-      "-c",
+      "-Isrc/",
       "-o",
-      "output/src/main.o",
+      "tetr.exe",
       "src/main.cpp"
     ],
     "directory": "/Users/gabe/p/tetr-afterhours",
     "file": "/Users/gabe/p/tetr-afterhours/src/main.cpp",
-    "output": "/Users/gabe/p/tetr-afterhours/output/src/main.o"
+    "output": "/Users/gabe/p/tetr-afterhours/tetr.exe"
   }
 ]

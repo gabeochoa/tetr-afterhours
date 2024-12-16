@@ -55,9 +55,12 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
   bool is_space = false;
 
   virtual bool should_run(float dt) override {
+
+    // TODO this timer thing means that sometimes
+    // you will press space and nothing will happen
+    // which feels bad
     if (timer < 0) {
       timer = timerReset;
-
       return is_space;
     }
     timer -= dt;
