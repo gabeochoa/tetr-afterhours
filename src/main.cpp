@@ -133,7 +133,7 @@ struct RenderFPS : System<window_manager::ProvidesCurrentResolution> {
       const Entity &,
       const window_manager::ProvidesCurrentResolution &pCurrentResolution,
       float) const override {
-    raylib::DrawFPS((int)(pCurrentResolution.width - 80), 0);
+    raylib::DrawFPS((int)(pCurrentResolution.width() - 80), 0);
   }
 };
 
@@ -153,8 +153,8 @@ int main(void) {
   {
     auto &entity = EntityHelper::createEntity();
     input::add_singleton_components<InputAction>(entity, get_mapping());
-    window_manager::add_singleton_components(entity, screenWidth, screenHeight,
-                                             200);
+    window_manager::add_singleton_components(
+        entity, window_manager::Resolution{screenWidth, screenHeight}, 200, {});
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
   }
