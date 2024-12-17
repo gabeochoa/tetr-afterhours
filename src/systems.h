@@ -49,28 +49,17 @@ void lock_entity(Entity &entity, const vec2 &pos,
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
   float timer;
   float timerReset;
-  ForceDrop() : timer(dropReset), timerReset(dropReset) {}
+  ForceDrop() : timer(0), timerReset(dropReset) {}
   virtual ~ForceDrop() {}
 
   bool is_space = false;
 
   virtual bool should_run(float dt) override {
-
-    // TODO this timer thing means that sometimes
-    // you will press space and nothing will happen
-    // which feels bad
-    if (timer < 0) {
-      timer = timerReset;
-      return is_space;
-    }
-    timer -= dt;
-
     input::PossibleInputCollector<InputAction> inpc =
         input::get_input_collector<InputAction>();
     if (!inpc.has_value()) {
       return false;
     }
-
     is_space = false;
 
     for (auto &actions_done : inpc.inputs()) {
@@ -81,6 +70,14 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       default:
         break;
       }
+    }
+
+    timer -= dt;
+
+    // we should force drop
+    if (is_space && timer <= 0) {
+      timer = timerReset;
+      return true;
     }
 
     return false;
