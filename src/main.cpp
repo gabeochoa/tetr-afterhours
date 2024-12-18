@@ -1,14 +1,12 @@
 
-
+#include "std_include.h"
 //
-#include <iostream>
-
 #include "rl.h"
-//
-#define AFTER_HOURS_ENTITY_HELPER
-#define AFTER_HOURS_ENTITY_QUERY
-#define AFTER_HOURS_SYSTEM
-#include "afterhours/ah.h"
+
+#include "afterhours/src/entity.h"
+#include "afterhours/src/entity_helper.h"
+#include "afterhours/src/system.h"
+
 #define AFTER_HOURS_USE_RAYLIB
 #include "afterhours/src/plugins/developer.h"
 #include "afterhours/src/plugins/input_system.h"
