@@ -1,15 +1,43 @@
+#include <stdio.h>
 
-
-//
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <cstring>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <functional>
 #include <iostream>
+#include <limits>
+#include <map>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <ostream>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <unordered_map>
+#include <variant>
+#include <vector>
+#include <type_traits>
+#include <cmath>
+#include <math.h>
+#include <variant>
+#include <string_view>
+#include <initializer_list>
+#include <iterator>
+#include <atomic>
+#include <utility>
 
 #include "rl.h"
-//
-#define AFTER_HOURS_ENTITY_HELPER
-#define AFTER_HOURS_ENTITY_QUERY
-#define AFTER_HOURS_SYSTEM
-#include "afterhours/ah.h"
-#define AFTER_HOURS_USE_RAYLIB
+
+//#include "afterhours/src/entity_helper.h"
+#include "afterhours/src/entity.h"
+#include "afterhours/src/system.h"
+
+//#define AFTER_HOURS_USE_RAYLIB
 #include "afterhours/src/plugins/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
@@ -94,36 +122,36 @@ using afterhours::input::InputCollector;
 
 auto get_mapping() {
   std::map<InputAction, input::ValidInputs> mapping;
-  mapping[InputAction::Left] = {
-      raylib::KEY_LEFT,
-      input::GamepadAxisWithDir{
-          .axis = raylib::GAMEPAD_AXIS_LEFT_X,
-          .dir = -1,
-      },
-  };
+  // mapping[InputAction::Left] = {
+  //     raylib::KEY_LEFT,
+  //     input::GamepadAxisWithDir{
+  //         .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+  //         .dir = -1,
+  //     },
+  // };
 
-  mapping[InputAction::Right] = {
-      raylib::KEY_RIGHT,
-      input::GamepadAxisWithDir{
-          .axis = raylib::GAMEPAD_AXIS_LEFT_X,
-          .dir = 1,
-      },
-  };
+  // mapping[InputAction::Right] = {
+  //     raylib::KEY_RIGHT,
+  //     input::GamepadAxisWithDir{
+  //         .axis = raylib::GAMEPAD_AXIS_LEFT_X,
+  //         .dir = 1,
+  //     },
+  // };
 
-  mapping[InputAction::Rotate] = {
-      raylib::KEY_UP,                                       //
-      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
-  };
+  // mapping[InputAction::Rotate] = {
+  //     raylib::KEY_UP,                                       //
+  //     raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
+  // };
 
-  mapping[InputAction::Drop] = {
-      raylib::KEY_DOWN,                                     //
-      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
-  };
+  // mapping[InputAction::Drop] = {
+  //     raylib::KEY_DOWN,                                     //
+  //     raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
+  // };
 
-  mapping[InputAction::Drop] = {
-      raylib::KEY_SPACE,                                  //
-      raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
-  };
+  // mapping[InputAction::Drop] = {
+  //     raylib::KEY_SPACE,                                  //
+  //     raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
+  // };
   return mapping;
 }
 

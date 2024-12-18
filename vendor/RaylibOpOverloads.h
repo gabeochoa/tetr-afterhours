@@ -1,13 +1,13 @@
 #ifndef RAYLIB_OP_OVERLOADS_HPP_INCLUDED
 #define RAYLIB_OP_OVERLOADS_HPP_INCLUDED
-#include <raylib.h>
-#include <raymath.h>
+#include "../../Raylib/include/raylib.h"
+#include "../../Raylib/include/raymath.h"
 
-// Note: (Gabe) I dont want this so disabling it, and it seems to be fine ?
-#ifdef RAYLIB_OP_OVERLOADS_RAYGUI
-#define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
-#endif
+// // Note: (Gabe) I dont want this so disabling it, and it seems to be fine ?
+// #ifdef RAYLIB_OP_OVERLOADS_RAYGUI
+// #define RAYGUI_IMPLEMENTATION
+// #include "../../Raylib/include/raygui.h"
+// #endif
 
 #include <iostream>   //For stream insertion (operator<<) overloading, e.g, cout
 #include <stdexcept>  //For divide-by-zero error trapping
@@ -66,7 +66,7 @@
 //#define PRINT_VECTORS_BY_COMPONENT
 
 //#define EQUALITY_OPERATOR_SIMPLE
-#define EQUALITY_OPERATOR_KNUTH
+//#define EQUALITY_OPERATOR_KNUTH
 
 // **************************************
 //

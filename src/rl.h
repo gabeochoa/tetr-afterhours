@@ -18,7 +18,7 @@
 
 namespace raylib {
 #include "RaylibOpOverloads.h"
-#include "raylib.h"
+#include "../../Raylib/include/raylib.h"
 
 } // namespace raylib
 
