@@ -8,7 +8,7 @@
 #include "afterhours/src/system.h"
 
 #define AFTER_HOURS_USE_RAYLIB
-#include "afterhours/src/plugins/developer.h"
+#include "afterhours/src/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
 #include <cassert>
@@ -85,7 +85,7 @@ enum class InputAction {
   Drop,
 };
 
-using afterhours::input::InputCollector;
+using afterhours::input;
 //
 #include "systems.h"
 //

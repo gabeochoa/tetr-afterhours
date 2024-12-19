@@ -21,6 +21,7 @@ namespace raylib {
 #include "raylib.h"
 
 } // namespace raylib
+#include <GLFW/glfw3.h>
 
 #ifdef __APPLE__
 #pragma clang diagnostic pop
