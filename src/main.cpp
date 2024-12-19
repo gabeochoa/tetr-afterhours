@@ -38,7 +38,7 @@ template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 const int map_h = 33;
 const int map_w = 12;
 
-const float keyReset = 0.05f;
+const float keyReset = 0.10f;
 const float dropReset = 0.20f;
 const float rotateReset = 0.10f;
 
