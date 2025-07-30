@@ -10,7 +10,8 @@
 #define AFTER_HOURS_SYSTEM
 #include "afterhours/ah.h"
 #define AFTER_HOURS_USE_RAYLIB
-#include "afterhours/src/plugins/developer.h"
+
+#include "afterhours/src/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
 #include <cassert>
@@ -87,7 +88,6 @@ enum class InputAction {
   Drop,
 };
 
-using afterhours::input::InputCollector;
 //
 #include "systems.h"
 //
@@ -185,7 +185,7 @@ int main(void) {
   // renders
   {
     systems.register_render_system(
-        []() { raylib::ClearBackground(color::BLACK_); });
+        [](float) { raylib::ClearBackground(color::BLACK_); });
     systems.register_render_system(std::make_unique<RenderGrid>());
     systems.register_render_system(std::make_unique<RenderPiece>());
     systems.register_render_system(std::make_unique<RenderGhost>());
