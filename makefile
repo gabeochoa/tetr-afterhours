@@ -5,7 +5,7 @@ RAYLIB_LIB := `pkg-config --libs raylib`
 RELEASE_FLAGS = -std=c++2a $(RAYLIB_FLAGS)
 
 FLAGS = -std=c++2a -Wall -Wextra -Wpedantic -Wuninitialized -Wshadow \
-		-Wmost -Wconversion -g $(RAYLIB_FLAGS)
+		-Wconversion -g $(RAYLIB_FLAGS)
 
 NOFLAGS = -Wno-deprecated-volatile -Wno-missing-field-initializers \
 		  -Wno-c99-extensions -Wno-unused-function -Wno-sign-conversion \
@@ -24,12 +24,13 @@ DEPENDS := $(patsubst %.cpp,%.d,$(SOURCES))
 
 OUTPUT_EXE := tetr.exe
 
-CXX := clang++
+# CXX := clang++ -Wmost
+CXX := g++
 
 .PHONY: all clean
 
 all:
-	clang++ $(FLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
+	$(CXX) $(FLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
 
 prof:
 	rm -rf recording.trace/

@@ -1,16 +1,14 @@
 
-
+#include "std_include.h"
 //
-#include <iostream>
-
 #include "rl.h"
-//
-#define AFTER_HOURS_ENTITY_HELPER
-#define AFTER_HOURS_ENTITY_QUERY
-#define AFTER_HOURS_SYSTEM
-#include "afterhours/ah.h"
-#define AFTER_HOURS_USE_RAYLIB
 
+#include "afterhours/src/entity.h"
+#include "afterhours/src/entity_helper.h"
+#include "afterhours/src/system.h"
+
+#define AFTER_HOURS_USE_RAYLIB
+using afterhours::input;
 #include "afterhours/src/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
@@ -41,7 +39,7 @@ template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 const int map_h = 33;
 const int map_w = 12;
 
-const float keyReset = 0.05f;
+const float keyReset = 0.10f;
 const float dropReset = 0.20f;
 const float rotateReset = 0.10f;
 
@@ -88,6 +86,7 @@ enum class InputAction {
   Drop,
 };
 
+using afterhours::input;
 //
 #include "systems.h"
 //
