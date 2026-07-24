@@ -3,12 +3,12 @@
 //
 #include "rl.h"
 
-#include "afterhours/src/entity.h"
-#include "afterhours/src/entity_helper.h"
-#include "afterhours/src/system.h"
-
+#define AFTER_HOURS_INPUT_VALIDATION_ASSERT
+#define AFTER_HOURS_ENTITY_HELPER
+#define AFTER_HOURS_ENTITY_QUERY
+#define AFTER_HOURS_SYSTEM
 #define AFTER_HOURS_USE_RAYLIB
-using afterhours::input;
+#include "afterhours/ah.h"
 #include "afterhours/src/developer.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
@@ -86,14 +86,26 @@ enum class InputAction {
   Drop,
 };
 
-using afterhours::input;
+inline int to_int(InputAction action) {
+  return static_cast<int>(action);
+}
+
+inline InputAction from_int(int value) {
+  return static_cast<InputAction>(value);
+}
+
+inline bool action_matches(int action, InputAction expected) {
+  return from_int(action) == expected;
+}
+
+using ::afterhours::input;
 //
 #include "systems.h"
 //
 
 auto get_mapping() {
-  std::map<InputAction, input::ValidInputs> mapping;
-  mapping[InputAction::Left] = {
+  std::map<int, input::ValidInputs> mapping;
+  mapping[to_int(InputAction::Left)] = {
       raylib::KEY_LEFT,
       input::GamepadAxisWithDir{
           .axis = raylib::GAMEPAD_AXIS_LEFT_X,
@@ -101,7 +113,7 @@ auto get_mapping() {
       },
   };
 
-  mapping[InputAction::Right] = {
+  mapping[to_int(InputAction::Right)] = {
       raylib::KEY_RIGHT,
       input::GamepadAxisWithDir{
           .axis = raylib::GAMEPAD_AXIS_LEFT_X,
@@ -109,17 +121,17 @@ auto get_mapping() {
       },
   };
 
-  mapping[InputAction::Rotate] = {
+  mapping[to_int(InputAction::Rotate)] = {
       raylib::KEY_UP,                                       //
       raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
   };
 
-  mapping[InputAction::Drop] = {
+  mapping[to_int(InputAction::Drop)] = {
       raylib::KEY_DOWN,                                     //
       raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
   };
 
-  mapping[InputAction::Drop] = {
+  mapping[to_int(InputAction::Drop)] = {
       raylib::KEY_SPACE,                                  //
       raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_UP //
   };
@@ -151,7 +163,7 @@ int main(void) {
   // sophie
   {
     auto &entity = EntityHelper::createEntity();
-    input::add_singleton_components<InputAction>(entity, get_mapping());
+    input::add_singleton_components(entity, get_mapping());
     window_manager::add_singleton_components(
         entity, window_manager::Resolution{screenWidth, screenHeight}, 200, {});
     entity.addComponent<NextPieceHolder>();
@@ -163,12 +175,12 @@ int main(void) {
   // debug systems
   {
     enforce_singletons(systems);
-    input::enforce_singletons<InputAction>(systems);
+    input::enforce_singletons(systems);
     window_manager::enforce_singletons(systems);
   }
 
   // external plugins
-  { input::register_update_systems<InputAction>(systems); }
+  { input::register_update_systems(systems); }
 
   // updates
   {
