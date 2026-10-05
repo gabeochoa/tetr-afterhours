@@ -45,10 +45,18 @@ void lock_entity(Entity &entity, const vec2 &pos,
   }
 }
 
+// Single repeat-timing type (CORRECT-E1). Decrement-then-test, inputs are
+// sampled by the caller BEFORE tick() so for_each_with never acts on last
+// call's input. Period is mutable so Fall can follow the global TR speed-up.
+struct RepeatGate {
+  float period; float t;
+  explicit RepeatGate(float p): period(p), t(p) {}
+  bool tick(float dt){ t-=dt; if(t<=0.f){ t=period; return true; } return false; }
+};
+
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
-  float timer;
-  float timerReset;
-  ForceDrop() : timer(0), timerReset(dropReset) {}
+  RepeatGate gate{dropReset};
+  ForceDrop() : gate(dropReset) { gate.t = 0; }
   virtual ~ForceDrop() {}
 
   bool is_space = false;
@@ -71,15 +79,8 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       }
     }
 
-    timer -= dt;
-
-    // we should force drop
-    if (is_space && timer <= 0) {
-      timer = timerReset;
-      return true;
-    }
-
-    return false;
+    bool ready = gate.tick(dt);
+    return is_space && ready;
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
@@ -97,25 +98,15 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
 };
 
 struct Move : System<Transform, IsFalling, PieceType> {
-  float timer;
-  float timerReset;
-
+  RepeatGate gate{keyReset};
   bool is_left_pressed;
   bool is_right_pressed;
   bool is_down_pressed;
 
-  Move() : timer(keyReset), timerReset(keyReset) {}
+  Move() : gate(keyReset) {}
   virtual ~Move() {}
 
   virtual bool should_run(float dt) override {
-
-    if (timer < 0) {
-      timer = timerReset;
-
-      return true;
-    }
-    timer -= dt;
-
     is_left_pressed = false;
     is_right_pressed = false;
     is_down_pressed = false;
@@ -142,7 +133,7 @@ struct Move : System<Transform, IsFalling, PieceType> {
         break;
       }
     }
-    return false;
+    return gate.tick(dt);
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
@@ -164,20 +155,13 @@ struct Move : System<Transform, IsFalling, PieceType> {
 };
 
 struct Rotate : System<Transform, IsFalling, PieceType> {
-  float timer;
-  float timerReset;
-
+  RepeatGate gate{rotateReset};
   bool is_up_pressed;
 
-  Rotate() : timer(rotateReset), timerReset(rotateReset) {}
+  Rotate() : gate(rotateReset) {}
   virtual ~Rotate() {}
 
   virtual bool should_run(float dt) override {
-    if (timer < 0) {
-      timer = timerReset;
-      return true;
-    }
-    timer -= dt;
     is_up_pressed = false;
 
     input::PossibleInputCollector<InputAction> inpc =
@@ -195,7 +179,7 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
         break;
       }
     }
-    return false;
+    return gate.tick(dt);
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
@@ -234,19 +218,14 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
 };
 
 struct Fall : System<Transform, IsFalling, PieceType> {
-  float timer;
-  float timerReset;
-  Fall() : timer(TR), timerReset(TR) {}
+  RepeatGate gate{TR};
+  Fall() : gate(TR) {}
 
   virtual ~Fall() {}
 
   virtual bool should_run(float dt) override {
-    if (timer < 0) {
-      timer = timerReset;
-      return true;
-    }
-    timer -= dt;
-    return false;
+    gate.period = TR; // ClearLine speeds the game up by lowering TR
+    return gate.tick(dt);
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
