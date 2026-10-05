@@ -4,7 +4,6 @@
 #include "colors.h"
 #include "components.h"
 #include "piece_data.h"
-#include "raylib.h"
 
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
 

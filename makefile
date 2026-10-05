@@ -30,9 +30,12 @@ CXX := g++
 .PHONY: all clean
 
 all:
-	$(CXX) $(FLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
+	$(CXX) $(FLAGS) $(NOFLAGS) $(INCLUDES) $(LIBS) src/main.cpp -o $(OUTPUT_EXE) && ./$(OUTPUT_EXE)
 
 prof:
 	rm -rf recording.trace/
 	xctrace record --template 'Game Performance' --output 'recording.trace' --launch $(OUTPUT_EXE)
 
+
+check:
+	python3 scripts/check_correct.py src
