@@ -8,6 +8,8 @@
 #define AFTER_HOURS_USE_RAYLIB
 #include "afterhours/ah.h"
 #include "afterhours/src/developer.h"
+#include "afterhours/src/plugins/animation/spring.h"
+#include "afterhours/src/plugins/particles.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
 #include <cassert>
@@ -150,6 +152,7 @@ int main(void) {
         entity, window_manager::Resolution{screenWidth, screenHeight}, 200, {});
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
+    entity.addComponent<LineBurst>();
     EntityHelper::registerSingleton<NextPieceHolder>(entity);
     EntityHelper::registerSingleton<Grid>(entity);
   }
@@ -183,6 +186,8 @@ int main(void) {
     systems.register_update_system(std::make_unique<Move>());
     systems.register_update_system(std::make_unique<Fall>());
     systems.register_update_system(std::make_unique<ClearLine>());
+    systems.register_update_system(std::make_unique<FollowSprings>());
+    systems.register_update_system(std::make_unique<UpdateLineBurst>());
   }
 
   // renders
@@ -193,6 +198,7 @@ int main(void) {
     systems.register_render_system(std::make_unique<RenderPiece>());
     systems.register_render_system(std::make_unique<RenderGhost>());
     systems.register_render_system(std::make_unique<RenderPreview>());
+    systems.register_render_system(std::make_unique<RenderLineBurst>());
     systems.register_render_system(
         std::make_unique<input::RenderConnectedGamepads>());
     systems.register_render_system(std::make_unique<RenderFPS>());

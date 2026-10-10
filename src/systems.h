@@ -38,10 +38,15 @@ void lock_entity(Entity &entity, const vec2 &pos,
   }
 }
 
+void draw_cell(vec2 pos, raylib::Color color) {
+  raylib::DrawRectangleRounded({pos.x, pos.y, sz * szm, sz * szm}, 0.3f, 4,
+                               color);
+}
+
 void draw_shape(vec2 pos, const std::array<int, 16> &shape,
                 raylib::Color color) {
   for (auto &pip : get_pips(pos, shape))
-    raylib::DrawRectangleV(pip, {sz * szm, sz * szm}, color);
+    draw_cell(pip, color);
 }
 
 // Actions held this frame (any device). Empty before the input collector
@@ -187,8 +192,9 @@ struct Fall : System<Transform, IsFalling, PieceType> {
   }
 };
 
-struct ClearLine : System<Grid> {
-  virtual void for_each_with(Entity &, Grid &gridC, float) override {
+struct ClearLine : System<Grid, LineBurst> {
+  virtual void for_each_with(Entity &, Grid &gridC, LineBurst &burst,
+                             float) override {
 
     auto &grid = gridC.grid;
 
@@ -203,8 +209,17 @@ struct ClearLine : System<Grid> {
         continue;
 
       // clear row()
-      for (size_t i = 0; i < map_w; i++)
+      for (size_t i = 0; i < map_w; i++) {
         grid[i][j] = 0;
+        for (int n = 0; n < 4; n++) {
+          auto &p = burst.emitter.spawn();
+          p.pos = {(float)i * sz + sz / 2, (float)j * sz + sz / 2};
+          p.vel = {(float)(rand() % 300 - 150), (float)(-100 - rand() % 250)};
+          p.size = (float)(4 + rand() % 4);
+          p.life = 0.8f + (float)(rand() % 40) / 100.f;
+          p.color = color::piece_color(rand() % 7);
+        }
+      }
 
       // move everything above down
       for (size_t k = j; k > 0; k--) {
@@ -228,12 +243,11 @@ struct ClearLine : System<Grid> {
 struct RenderGrid : System<Grid> {
   virtual void for_each_with(const Entity &, const Grid &gridC,
                              float) const override {
-    vec2 size = {sz * szm, sz * szm};
     for (size_t i = 0; i < map_w; i++) {
       for (size_t j = 0; j < map_h; j++) {
         int val = gridC.grid[i][j];
-        raylib::DrawRectangleV({(i * sz), (j * sz)}, size,
-                               val == 0 ? color::GRAY_ : color::BLACK);
+        draw_cell({(float)i * sz, (float)j * sz},
+                  val == 0 ? color::GRAY_ : color::BLACK);
       }
     }
   }
@@ -242,7 +256,9 @@ struct RenderGrid : System<Grid> {
 struct RenderPiece : System<Transform, PieceType> {
   virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-    draw_shape(transform.pos(), pieceType.shape,
+    vec2 pos = entity.has<SpringPos>() ? entity.get<SpringPos>().shown
+                                       : transform.pos();
+    draw_shape(pos, pieceType.shape,
                entity.has<IsGround>() ? color::BLACK_
                                       : color::piece_color(pieceType.type));
   }
@@ -289,10 +305,48 @@ struct SpawnPieceIfNoneFalling : System<NextPieceHolder> {
     entity.addComponent<IsFalling>();
     entity.addComponent<HasCollision>();
     entity.addComponent<PieceType>(nph.next_type);
+    entity.addComponent<SpringPos>(vec2{20, 20});
 
     nph.next_type = (rand() % 6);
 
     std::cout << "spawned piece of type " << entity.get<PieceType>().type
               << std::endl;
+  }
+};
+
+struct FollowSprings : System<Transform, SpringPos> {
+  static float follow(SpringPos::Axis &a, float target, float dt) {
+    const auto spring = motion::Spring::snappy();
+    if (target != a.st.target) {
+      auto now = motion::spring_solve(spring, a.st, a.t);
+      a.st = {now.x, now.v, target};
+      a.t = 0;
+    }
+    a.t += dt;
+    return motion::spring_solve(spring, a.st, a.t).x;
+  }
+
+  virtual void for_each_with(Entity &, Transform &transform, SpringPos &sp,
+                             float dt) override {
+    sp.shown = {follow(sp.x, transform.pos().x, dt),
+                follow(sp.y, transform.pos().y, dt)};
+  }
+};
+
+struct UpdateLineBurst : System<LineBurst> {
+  virtual void for_each_with(Entity &, LineBurst &burst, float dt) override {
+    burst.emitter.update(dt);
+  }
+};
+
+struct RenderLineBurst : System<LineBurst> {
+  virtual void for_each_with(const Entity &, const LineBurst &burst,
+                             float) const override {
+    burst.emitter.each([](const particles::Particle &p) {
+      raylib::Color c = p.color;
+      c.a = (unsigned char)(255.f * (1.f - p.progress()));
+      raylib::DrawRectangleV({p.pos.x - p.size / 2, p.pos.y - p.size / 2},
+                             {p.size, p.size}, c);
+    });
   }
 };
