@@ -8,14 +8,14 @@ RAYLIB_FLAGS := `pkg-config --cflags raylib`
 # symbols that afterhours's window_manager calls directly (glfwGetVideoModes, etc.)
 RAYLIB_LIB := $(shell brew --prefix raylib)/lib/libraylib.a -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation -framework CoreGraphics
 
-# raylib 5.5's raymath.h ships C++ operator overloads that collide with the
-# vendored RaylibOpOverloads.h; disable raylib's so ours win.
-RAYMATH_FLAGS := -DRAYMATH_DISABLE_CPP_OPERATORS
+# afterhours headless_gl_macos.h sets GL_SILENCE_DEPRECATION after GLFW already
+# pulled in gl.h; define it (empty, to match) and the multi-header opt-out up front.
+GL_FLAGS := -DGL_SILENCE_DEPRECATION= -DGL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
 
-RELEASE_FLAGS = -std=c++2a $(RAYLIB_FLAGS) $(RAYMATH_FLAGS)
+RELEASE_FLAGS = -std=c++2a $(RAYLIB_FLAGS) $(GL_FLAGS)
 
 FLAGS = -std=c++2a -Wall -Wextra -Wpedantic -Wuninitialized -Wshadow \
-		-Wconversion -g $(RAYLIB_FLAGS) $(RAYMATH_FLAGS)
+		-Wconversion -g $(RAYLIB_FLAGS) $(GL_FLAGS)
 
 NOFLAGS = -Wno-deprecated-volatile -Wno-missing-field-initializers \
 		  -Wno-c99-extensions -Wno-unused-function -Wno-sign-conversion \
