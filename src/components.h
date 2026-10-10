@@ -17,7 +17,6 @@ private:
 
 struct HasCollision : public BaseComponent {};
 struct IsGround : public BaseComponent {};
-struct IsLocked : public BaseComponent {};
 struct IsFalling : public BaseComponent {};
 
 struct PieceType : public BaseComponent {

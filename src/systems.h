@@ -6,9 +6,7 @@
 #include "piece_data.h"
 
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
-
-  OptEntity opt_grid = EQ().whereHasComponent<Grid>().gen_first();
-  Grid &gridC = opt_grid.asE().get<Grid>();
+  Grid &gridC = *EntityHelper::get_singleton_cmp<Grid>();
 
   auto pips = get_pips(pos, shape);
   for (auto &pip : pips) {
@@ -34,15 +32,29 @@ void lock_entity(Entity &entity, const vec2 &pos,
   entity.removeComponent<IsFalling>();
   entity.cleanup = true;
 
-  OptEntity opt_grid = EQ().whereHasComponent<Grid>().gen_first();
-  Grid &gridC = opt_grid.asE().get<Grid>();
-
-  const auto &pips = get_pips(pos, sh);
-  for (auto &pip : pips) {
-    size_t i = (size_t)(pip.x / sz);
-    size_t j = (size_t)(pip.y / sz);
-    gridC.grid[i][j] = 1;
+  Grid &gridC = *EntityHelper::get_singleton_cmp<Grid>();
+  for (auto &pip : get_pips(pos, sh)) {
+    gridC.grid[(size_t)(pip.x / sz)][(size_t)(pip.y / sz)] = 1;
   }
+}
+
+void draw_shape(vec2 pos, const std::array<int, 16> &shape,
+                raylib::Color color) {
+  for (auto &pip : get_pips(pos, shape))
+    raylib::DrawRectangleV(pip, {sz * szm, sz * szm}, color);
+}
+
+// Actions held this frame (any device). Empty before the input collector
+// exists.
+std::set<InputAction> held_actions() {
+  std::set<InputAction> held;
+  input::PossibleInputCollector inpc = input::get_input_collector();
+  if (!inpc.has_value())
+    return held;
+  for (auto &actions_done : inpc.inputs())
+    if (actions_done.amount_pressed > 0.f)
+      held.insert(from_int(actions_done.action));
+  return held;
 }
 
 // Single repeat-timing type (CORRECT-E1). Decrement-then-test, inputs are
@@ -56,37 +68,16 @@ struct RepeatGate {
 
 struct ForceDrop : System<Transform, IsFalling, PieceType> {
   RepeatGate gate{dropReset};
-  ForceDrop() : gate(dropReset) { gate.t = 0; }
-  virtual ~ForceDrop() {}
-
-  bool is_space = false;
+  ForceDrop() { gate.t = 0; }
 
   virtual bool should_run(float dt) override {
-    input::PossibleInputCollector inpc =
-        input::get_input_collector();
-    if (!inpc.has_value()) {
-      return false;
-    }
-    is_space = false;
-
-    for (auto &actions_done : inpc.inputs()) {
-      switch (from_int(actions_done.action)) {
-      case InputAction::Drop:
-        is_space = actions_done.amount_pressed > 0.f;
-        break;
-      default:
-        break;
-      }
-    }
-
+    bool is_space = held_actions().contains(InputAction::Drop);
     bool ready = gate.tick(dt);
     return is_space && ready;
   }
 
   virtual void for_each_with(Entity &entity, Transform &transform, IsFalling &,
                              PieceType &pt, float) override {
-    if (!is_space)
-      return;
     vec2 p = transform.pos();
     vec2 offset = vec2{0, sz};
     while (!will_collide(entity.id, p + offset, pt.shape)) {
@@ -99,40 +90,10 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
 
 struct Move : System<Transform, IsFalling, PieceType> {
   RepeatGate gate{keyReset};
-  bool is_left_pressed;
-  bool is_right_pressed;
-  bool is_down_pressed;
-
-  Move() : gate(keyReset) {}
-  virtual ~Move() {}
+  std::set<InputAction> held;
 
   virtual bool should_run(float dt) override {
-    is_left_pressed = false;
-    is_right_pressed = false;
-    is_down_pressed = false;
-
-    input::PossibleInputCollector inpc =
-        input::get_input_collector();
-    if (!inpc.has_value()) {
-      return false;
-    }
-
-    // TODO do we need to eat these?
-    for (auto &actions_done : inpc.inputs()) {
-      switch (from_int(actions_done.action)) {
-      case InputAction::Left:
-        is_left_pressed = actions_done.amount_pressed > 0.f;
-        break;
-      case InputAction::Right:
-        is_right_pressed = actions_done.amount_pressed > 0.f;
-        break;
-      case InputAction::Down:
-        is_down_pressed = actions_done.amount_pressed > 0.f;
-        break;
-      default:
-        break;
-      }
-    }
+    held = held_actions();
     return gate.tick(dt);
   }
 
@@ -140,11 +101,11 @@ struct Move : System<Transform, IsFalling, PieceType> {
                              PieceType &pt, float) override {
 
     vec2 p = transform.pos();
-    if (is_left_pressed)
+    if (held.contains(InputAction::Left))
       p -= vec2{sz, 0};
-    if (is_right_pressed)
+    if (held.contains(InputAction::Right))
       p += vec2{sz, 0};
-    if (is_down_pressed)
+    if (held.contains(InputAction::Down))
       p += vec2{0, sz};
 
     if (will_collide(entity.id, p, pt.shape)) {
@@ -156,29 +117,10 @@ struct Move : System<Transform, IsFalling, PieceType> {
 
 struct Rotate : System<Transform, IsFalling, PieceType> {
   RepeatGate gate{rotateReset};
-  bool is_up_pressed;
-
-  Rotate() : gate(rotateReset) {}
-  virtual ~Rotate() {}
+  bool is_up_pressed = false;
 
   virtual bool should_run(float dt) override {
-    is_up_pressed = false;
-
-    input::PossibleInputCollector inpc =
-        input::get_input_collector();
-    if (!inpc.has_value()) {
-      return false;
-    }
-
-    for (auto &actions_done : inpc.inputs()) {
-      switch (from_int(actions_done.action)) {
-      case InputAction::Rotate:
-        is_up_pressed = actions_done.amount_pressed > 0.f;
-        break;
-      default:
-        break;
-      }
-    }
+    is_up_pressed = held_actions().contains(InputAction::Rotate);
     return gate.tick(dt);
   }
 
@@ -219,9 +161,6 @@ struct Rotate : System<Transform, IsFalling, PieceType> {
 
 struct Fall : System<Transform, IsFalling, PieceType> {
   RepeatGate gate{TR};
-  Fall() : gate(TR) {}
-
-  virtual ~Fall() {}
 
   virtual bool should_run(float dt) override {
     gate.period = TR; // ClearLine speeds the game up by lowering TR
@@ -244,14 +183,11 @@ struct Fall : System<Transform, IsFalling, PieceType> {
 
       return;
     }
-    //
-    //
     transform.update(p);
   }
 };
 
 struct ClearLine : System<Grid> {
-  virtual ~ClearLine() {}
   virtual void for_each_with(Entity &, Grid &gridC, float) override {
 
     auto &grid = gridC.grid;
@@ -290,7 +226,6 @@ struct ClearLine : System<Grid> {
 };
 
 struct RenderGrid : System<Grid> {
-  virtual ~RenderGrid() {}
   virtual void for_each_with(const Entity &, const Grid &gridC,
                              float) const override {
     vec2 size = {sz * szm, sz * szm};
@@ -305,51 +240,26 @@ struct RenderGrid : System<Grid> {
 };
 
 struct RenderPiece : System<Transform, PieceType> {
-  virtual ~RenderPiece() {}
   virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-
-    raylib::Color col = entity.has<IsGround>()
-                            ? color::BLACK_
-                            : color::piece_color(pieceType.type);
-
-    for (size_t i = 0; i < 4; i++) {
-      for (size_t j = 0; j < 4; j++) {
-        if (pieceType.shape[j * 4 + i] == 0)
-          continue;
-        raylib::DrawRectangleV(
-            {transform.pos().x + (i * sz), transform.pos().y + (j * sz)},
-            {sz * szm, sz * szm},
-
-            col);
-      }
-    }
+    draw_shape(transform.pos(), pieceType.shape,
+               entity.has<IsGround>() ? color::BLACK_
+                                      : color::piece_color(pieceType.type));
   }
 };
 
 struct RenderPreview : System<NextPieceHolder> {
-  virtual ~RenderPreview() {}
   virtual void for_each_with(const Entity &, const NextPieceHolder &nph,
                              float) const override {
     vec2 p = {260, 60};
-    auto shape = type_to_rotated_array(nph.next_type, 0);
-    raylib::Color color = color::piece_color(nph.next_type);
-
     raylib::DrawText("Next Piece", (int)p.x, (int)(p.y - (2 * sz)), (int)sz,
                      raylib::RAYWHITE);
-
-    for (size_t i = 0; i < 4; i++) {
-      for (size_t j = 0; j < 4; j++) {
-        if (shape[j * 4 + i] == 0)
-          continue;
-        raylib::DrawRectangleV({p.x + (i * sz), p.y + (j * sz)},
-                               {sz * szm, sz * szm}, color);
-      }
-    }
+    draw_shape(p, type_to_rotated_array(nph.next_type, 0),
+               color::piece_color(nph.next_type));
   }
 };
+
 struct RenderGhost : System<Transform, IsFalling, PieceType> {
-  virtual ~RenderGhost() {}
   virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const IsFalling &, const PieceType &pt,
                              float) const override {
@@ -363,21 +273,11 @@ struct RenderGhost : System<Transform, IsFalling, PieceType> {
 
     raylib::Color color = color::piece_color(pt.type);
     color.a = 100;
-
-    for (size_t i = 0; i < 4; i++) {
-      for (size_t j = 0; j < 4; j++) {
-        if (pt.shape[j * 4 + i] == 0)
-          continue;
-        raylib::DrawRectangleV({p.x + (i * sz), p.y + (j * sz)},
-                               {sz * szm, sz * szm}, color);
-      }
-    }
+    draw_shape(p, pt.shape, color);
   }
 };
 
 struct SpawnPieceIfNoneFalling : System<NextPieceHolder> {
-  virtual ~SpawnPieceIfNoneFalling() {}
-
   virtual bool should_run(float) override {
     return !EQ().whereHasComponent<IsFalling>().has_values();
   }
@@ -394,24 +294,5 @@ struct SpawnPieceIfNoneFalling : System<NextPieceHolder> {
 
     std::cout << "spawned piece of type " << entity.get<PieceType>().type
               << std::endl;
-  }
-};
-
-struct SpawnGround : System<> {
-  bool init = false;
-  virtual ~SpawnGround() {}
-
-  virtual bool should_run(float) {
-    if (!init) {
-      init = true;
-      for (int i = 0; i < map_w; i += 4) {
-        auto &entity = EntityHelper::createEntity();
-        entity.addComponent<Transform>(vec2{20.f * i, (map_h - 1) * 20.f});
-        entity.addComponent<IsGround>();
-        entity.addComponent<HasCollision>();
-        entity.addComponent<PieceType>(0);
-      }
-    }
-    return false;
   }
 };

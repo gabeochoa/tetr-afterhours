@@ -1,6 +1,4 @@
 
-#include "std_include.h"
-//
 #include "rl.h"
 
 #define AFTER_HOURS_INPUT_VALIDATION_ASSERT
@@ -19,21 +17,10 @@
 using namespace afterhours;
 
 typedef raylib::Vector2 vec2;
-typedef raylib::Vector3 vec3;
-typedef raylib::Vector4 vec4;
 
 constexpr float distance_sq(const vec2 a, const vec2 b) {
   return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 }
-
-namespace util {
-
-template <class... Ts> struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-
-template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
-} // namespace util
 
 //
 const int map_h = 33;
@@ -94,10 +81,6 @@ inline InputAction from_int(int value) {
   return static_cast<InputAction>(value);
 }
 
-inline bool action_matches(int action, InputAction expected) {
-  return from_int(action) == expected;
-}
-
 using ::afterhours::input;
 //
 #include "systems.h"
@@ -126,7 +109,7 @@ auto get_mapping() {
       raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN //
   };
 
-  mapping[to_int(InputAction::Drop)] = {
+  mapping[to_int(InputAction::Down)] = {
       raylib::KEY_DOWN,                                     //
       raylib::GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_LEFT //
   };
@@ -139,7 +122,6 @@ auto get_mapping() {
 }
 
 struct RenderFPS : System<window_manager::ProvidesCurrentResolution> {
-  virtual ~RenderFPS() {}
   virtual void for_each_with(
       const Entity &,
       const window_manager::ProvidesCurrentResolution &pCurrentResolution,
@@ -168,7 +150,18 @@ int main(void) {
         entity, window_manager::Resolution{screenWidth, screenHeight}, 200, {});
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
+    EntityHelper::registerSingleton<NextPieceHolder>(entity);
+    EntityHelper::registerSingleton<Grid>(entity);
   }
+
+  for (int i = 0; i < map_w; i += 4) {
+    auto &ground = EntityHelper::createEntity();
+    ground.addComponent<Transform>(vec2{sz * (float)i, (map_h - 1) * sz});
+    ground.addComponent<IsGround>();
+    ground.addComponent<HasCollision>();
+    ground.addComponent<PieceType>(0);
+  }
+  EntityHelper::merge_entity_arrays();
 
   SystemManager systems;
 
@@ -184,7 +177,6 @@ int main(void) {
 
   // updates
   {
-    systems.register_update_system(std::make_unique<SpawnGround>());
     systems.register_update_system(std::make_unique<SpawnPieceIfNoneFalling>());
     systems.register_update_system(std::make_unique<ForceDrop>());
     systems.register_update_system(std::make_unique<Rotate>());
