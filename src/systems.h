@@ -11,7 +11,8 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
   auto pips = get_pips(pos, shape);
   for (auto &pip : pips) {
     // check inside map
-    if (pip.x < 0 || pip.x > (map_w - 1) * sz)
+    if (pip.x < 0 || pip.x > (map_w - 1) * sz || pip.y < 0 ||
+        pip.y > (map_h - 1) * sz)
       return true;
     // check if locked
     if (gridC.grid[(size_t)(pip.x / sz)][(size_t)(pip.y / sz)] > 0)
@@ -27,14 +28,14 @@ bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape) {
       .has_values();
 }
 
-void lock_entity(Entity &entity, const vec2 &pos,
-                 const std::array<int, 16> &sh) {
+void lock_entity(Entity &entity, const vec2 &pos, const PieceType &pt) {
   entity.removeComponent<IsFalling>();
   entity.cleanup = true;
 
   Grid &gridC = *EntityHelper::get_singleton_cmp<Grid>();
-  for (auto &pip : get_pips(pos, sh)) {
-    gridC.grid[(size_t)(pip.x / sz)][(size_t)(pip.y / sz)] = 1;
+  // Cells store type + 1 so locked blocks keep their colour; 0 is empty.
+  for (auto &pip : get_pips(pos, pt.shape)) {
+    gridC.grid[(size_t)(pip.x / sz)][(size_t)(pip.y / sz)] = pt.type + 1;
   }
 }
 
@@ -89,7 +90,8 @@ struct ForceDrop : System<Transform, IsFalling, PieceType> {
       p += offset;
     }
     transform.update(p);
-    lock_entity(entity, p, pt.shape);
+    lock_entity(entity, p, pt);
+    EntityHelper::get_singleton_cmp<ScreenShake>()->t = 0;
   }
 };
 
@@ -183,7 +185,7 @@ struct Fall : System<Transform, IsFalling, PieceType> {
       input::PossibleInputCollector inpc =
           input::get_input_collector();
       if (inpc.has_value() && inpc.since_last_input() > 1.f) {
-        lock_entity(entity, transform.pos(), pt.shape);
+        lock_entity(entity, transform.pos(), pt);
       }
 
       return;
@@ -243,11 +245,12 @@ struct ClearLine : System<Grid, LineBurst> {
 struct RenderGrid : System<Grid> {
   virtual void for_each_with(const Entity &, const Grid &gridC,
                              float) const override {
+    // The bottom row holds the invisible ground pieces, so skip it.
     for (size_t i = 0; i < map_w; i++) {
-      for (size_t j = 0; j < map_h; j++) {
+      for (size_t j = 0; j < map_h - 1; j++) {
         int val = gridC.grid[i][j];
         draw_cell({(float)i * sz, (float)j * sz},
-                  val == 0 ? color::GRAY_ : color::BLACK);
+                  val == 0 ? color::EMPTY_CELL : color::piece_color(val - 1));
       }
     }
   }
@@ -256,22 +259,39 @@ struct RenderGrid : System<Grid> {
 struct RenderPiece : System<Transform, PieceType> {
   virtual void for_each_with(const Entity &entity, const Transform &transform,
                              const PieceType &pieceType, float) const override {
-    vec2 pos = entity.has<SpringPos>() ? entity.get<SpringPos>().shown
-                                       : transform.pos();
-    draw_shape(pos, pieceType.shape,
-               entity.has<IsGround>() ? color::BLACK_
-                                      : color::piece_color(pieceType.type));
+    if (entity.has<IsGround>())
+      return;
+    draw_shape(transform.pos(), pieceType.shape,
+               color::piece_color(pieceType.type));
   }
 };
 
-struct RenderPreview : System<NextPieceHolder> {
+const float pad = 8;
+const float gap = sz * (1 - szm); // space after the last cell
+const float side_x = map_w * sz + 2 * pad + 12;
+
+struct RenderPanels : System<> {
+  virtual void once(float) const override {
+    raylib::DrawRectangleRounded(
+        {-pad, -pad, map_w * sz - gap + 2 * pad,
+         (map_h - 1) * sz - gap + 2 * pad},
+        0.03f, 6,
+        color::PANEL);
+    raylib::DrawRectangleRounded({side_x, -pad, 120, 200}, 0.1f, 6,
+                                 color::PANEL);
+  }
+};
+
+struct RenderPreview : System<NextPieceHolder, Grid> {
   virtual void for_each_with(const Entity &, const NextPieceHolder &nph,
-                             float) const override {
-    vec2 p = {260, 60};
-    raylib::DrawText("Next Piece", (int)p.x, (int)(p.y - (2 * sz)), (int)sz,
-                     raylib::RAYWHITE);
-    draw_shape(p, type_to_rotated_array(nph.next_type, 0),
+                             const Grid &gridC, float) const override {
+    const int x = (int)(side_x + 16);
+    raylib::DrawText("NEXT", x, 8, 16, color::LABEL);
+    draw_shape({side_x + 20, 36}, type_to_rotated_array(nph.next_type, 0),
                color::piece_color(nph.next_type));
+    raylib::DrawText("LINES", x, 124, 16, color::LABEL);
+    raylib::DrawText(std::to_string(gridC.totalCleared).c_str(), x, 146, 28,
+                     raylib::RAYWHITE);
   }
 };
 
@@ -305,31 +325,11 @@ struct SpawnPieceIfNoneFalling : System<NextPieceHolder> {
     entity.addComponent<IsFalling>();
     entity.addComponent<HasCollision>();
     entity.addComponent<PieceType>(nph.next_type);
-    entity.addComponent<SpringPos>(vec2{20, 20});
 
     nph.next_type = (rand() % 6);
 
     std::cout << "spawned piece of type " << entity.get<PieceType>().type
               << std::endl;
-  }
-};
-
-struct FollowSprings : System<Transform, SpringPos> {
-  static float follow(SpringPos::Axis &a, float target, float dt) {
-    const auto spring = motion::Spring::snappy();
-    if (target != a.st.target) {
-      auto now = motion::spring_solve(spring, a.st, a.t);
-      a.st = {now.x, now.v, target};
-      a.t = 0;
-    }
-    a.t += dt;
-    return motion::spring_solve(spring, a.st, a.t).x;
-  }
-
-  virtual void for_each_with(Entity &, Transform &transform, SpringPos &sp,
-                             float dt) override {
-    sp.shown = {follow(sp.x, transform.pos().x, dt),
-                follow(sp.y, transform.pos().y, dt)};
   }
 };
 
@@ -348,5 +348,18 @@ struct RenderLineBurst : System<LineBurst> {
       raylib::DrawRectangleV({p.pos.x - p.size / 2, p.pos.y - p.size / 2},
                              {p.size, p.size}, c);
     });
+  }
+};
+
+struct ShakeCamera : System<camera::HasCamera, ScreenShake> {
+  virtual void for_each_with(Entity &, camera::HasCamera &cam,
+                             ScreenShake &shake, float dt) override {
+    // Same keys as afterhours presets::shake(); that header needs the UI.
+    static const motion::Timeline thud{
+        .keys = {{0.f, 0.f}, {0.08f, 1.f}, {0.16f, -1.f}, {0.22f, 0.667f},
+                 {0.28f, 0.f}},
+        .curve = motion::curves::ease_out_quad};
+    shake.t += dt;
+    cam.set_offset({board_origin.x, board_origin.y + 6.f * thud.at(shake.t)});
   }
 };

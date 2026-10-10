@@ -8,7 +8,8 @@
 #define AFTER_HOURS_USE_RAYLIB
 #include "afterhours/ah.h"
 #include "afterhours/src/developer.h"
-#include "afterhours/src/plugins/animation/spring.h"
+#include "afterhours/src/plugins/animation/timeline.h"
+#include "afterhours/src/plugins/camera.h"
 #include "afterhours/src/plugins/particles.h"
 #include "afterhours/src/plugins/input_system.h"
 #include "afterhours/src/plugins/window_manager.h"
@@ -33,6 +34,8 @@ const float dropReset = 0.20f;
 const float rotateReset = 0.10f;
 
 const float sz = 20;
+// Screen position of the board's top-left cell; applied by the camera.
+const vec2 board_origin = {160, 40};
 const float szm = 0.8f;
 
 float TR = 0.25f;
@@ -53,8 +56,8 @@ std::vector<vec2> get_pips(const vec2 &pos, const std::array<int, 16> &sh) {
 }
 
 bool will_collide(EntityID id, vec2 pos, const std::array<int, 16> &shape);
-void lock_entity(Entity &entity, const vec2 &pos,
-                 const std::array<int, 16> &sh);
+struct PieceType;
+void lock_entity(Entity &entity, const vec2 &pos, const PieceType &pt);
 
 // These are not real header files, im just
 // hijacking the include to paste the files here in this order
@@ -153,8 +156,12 @@ int main(void) {
     entity.addComponent<NextPieceHolder>();
     entity.addComponent<Grid>();
     entity.addComponent<LineBurst>();
+    entity.addComponent<ScreenShake>();
+    camera::add_singleton_components(entity);
+    entity.get<camera::HasCamera>().set_zoom(1.f);
     EntityHelper::registerSingleton<NextPieceHolder>(entity);
     EntityHelper::registerSingleton<Grid>(entity);
+    EntityHelper::registerSingleton<ScreenShake>(entity);
   }
 
   for (int i = 0; i < map_w; i += 4) {
@@ -186,21 +193,22 @@ int main(void) {
     systems.register_update_system(std::make_unique<Move>());
     systems.register_update_system(std::make_unique<Fall>());
     systems.register_update_system(std::make_unique<ClearLine>());
-    systems.register_update_system(std::make_unique<FollowSprings>());
     systems.register_update_system(std::make_unique<UpdateLineBurst>());
+    systems.register_update_system(std::make_unique<ShakeCamera>());
   }
 
   // renders
   {
     systems.register_render_system(
-        [](float) { raylib::ClearBackground(color::BLACK_); });
+        [](float) { raylib::ClearBackground(color::BACKGROUND); });
+    camera::register_begin_camera(systems);
+    systems.register_render_system(std::make_unique<RenderPanels>());
     systems.register_render_system(std::make_unique<RenderGrid>());
     systems.register_render_system(std::make_unique<RenderPiece>());
     systems.register_render_system(std::make_unique<RenderGhost>());
     systems.register_render_system(std::make_unique<RenderPreview>());
     systems.register_render_system(std::make_unique<RenderLineBurst>());
-    systems.register_render_system(
-        std::make_unique<input::RenderConnectedGamepads>());
+    camera::register_end_camera(systems);
     systems.register_render_system(std::make_unique<RenderFPS>());
   }
 

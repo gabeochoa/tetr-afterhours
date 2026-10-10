@@ -33,24 +33,17 @@ struct NextPieceHolder : public BaseComponent {
   NextPieceHolder() : next_type(rand() % 6) {}
 };
 
-// Where a falling piece is drawn: chases Transform::pos() on a spring so
-// moves and drops slide instead of snapping.
-struct SpringPos : public BaseComponent {
-  struct Axis {
-    motion::SpringState st;
-    float t = 0;
-  };
-  Axis x, y;
-  vec2 shown;
-  SpringPos(vec2 pos) : x{{pos.x, 0, pos.x}}, y{{pos.y, 0, pos.y}}, shown(pos) {}
-};
-
 struct LineBurst : public BaseComponent {
   particles::Emitter<512> emitter;
   LineBurst() {
     emitter.gravity = {0, 900};
-    emitter.floor_y = map_h * sz;
+    emitter.floor_y = (map_h - 1) * sz;
   }
+};
+
+// Seconds since the last hard drop; drives the camera shake timeline.
+struct ScreenShake : public BaseComponent {
+  float t = 1e9f;
 };
 
 struct Grid : public BaseComponent {
